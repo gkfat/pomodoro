@@ -44,7 +44,7 @@ use_cases:
         action: 使用者拖曳休息時間拖曳條，畫面即時顯示目前分鐘數
         constraints: [NFR-005]
       - step: 3
-        action: 系統驗證兩者皆為 5 的倍數且介於 5–120
+        action: 系統驗證工作時間為 5 的倍數分鐘（5–120）、休息時間為 30 的倍數秒（30 秒–120 分鐘）
       - step: 4
         action: 系統將設定存入 localStorage
     alternateFlows:

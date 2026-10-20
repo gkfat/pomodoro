@@ -2,6 +2,8 @@ import type {
     TimerDurations, TimerPhase, TimerState, 
 } from './types';
 
+export const APP_TITLE = 'Pomodoro';
+
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 
@@ -42,4 +44,17 @@ export const getNextAlertAt = (state: TimerState): number | null => state.endsAt
 export const formatClock = (timestamp: number): string => {
     const date = new Date(timestamp);
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
+// 分頁標題：計時中顯示剩餘時間，暫停時加上 Paused，閒置時只顯示應用名稱。
+export const formatDocumentTitle = (state: TimerState, remainingText: string): string => {
+    switch (state.status) {
+    case 'WORKING':
+    case 'BREAK':
+        return `${remainingText} · ${APP_TITLE}`;
+    case 'PAUSED':
+        return `Paused ${remainingText} · ${APP_TITLE}`;
+    case 'IDLE':
+        return APP_TITLE;
+    }
 };

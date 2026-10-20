@@ -7,7 +7,7 @@
 | ID | 標題 | 描述 | Priority | Context |
 |---|---|---|---|---|
 | FR-001 | 自訂工作時間 | 以拖曳條設定工作分鐘數（5 分鐘單位，5–120） | P0 | CTX-ACTOR-001, CTX-ASM-002 |
-| FR-002 | 自訂休息時間 | 以拖曳條設定休息分鐘數（5 分鐘單位，5–120） | P0 | CTX-ACTOR-001, CTX-ASM-002 |
+| FR-002 | 自訂休息時間 | 以拖曳條設定休息時間（30 秒單位，30 秒–120 分鐘） | P0 | CTX-ACTOR-001, CTX-ASM-002 |
 | FR-003 | 計時控制 | 開始／暫停／繼續／Restart | P0 | CTX-ACTOR-001, CTX-CON-002 |
 | FR-004 | 階段結束提醒 | 工作與休息結束各提醒一次（視覺 + 音效） | P0 | CTX-ACTOR-001, CTX-EXT-002, CTX-ASM-004 |
 | FR-005 | 瀏覽器系統通知 | 授權時發系統通知，否則退回頁內提醒 | P0 | CTX-EXT-003, CTX-ASM-004 |
@@ -24,7 +24,7 @@
 | NFR-002 | reliability | 到期於背景時回前景立即提醒，且僅一次 | 每階段提醒 = 1 | CTX-CON-002, CTX-ACTOR-001 |
 | NFR-003 | security | localStorage 資料 runtime 驗證 | 無效資料 100% 退回預設值 | CTX-EXT-001 |
 | NFR-004 | maintainability | 沿用現有技術棧，狀態轉換集中於單一引擎、UI 不改倒數時間 | 引擎測試覆蓋 FR-003/009、NFR-001/002 | CTX-CON-001, CTX-CON-004 |
-| NFR-005 | usability | 時間設定限 5 分鐘單位、5–120（拖曳條限制取值） | 可選取值僅為 5 的倍數且 5–120 分鐘 | CTX-ACTOR-001, CTX-ASM-002 |
+| NFR-005 | usability | 工作 5 分鐘單位（5–120）、休息 30 秒單位（30 秒–120 分鐘），拖曳條限制取值 | 工作為 5 的倍數分鐘；休息為 30 的倍數秒 | CTX-ACTOR-001, CTX-ASM-002 |
 
 ## 待確認
 無。

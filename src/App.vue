@@ -74,7 +74,9 @@ const showNotice = computed({
                         <SettingsPanel
                             :locked="timer.isSettingsLocked.value"
                             :notification-support="timer.notificationSupport.value"
+                            :preview-error="timer.previewError.value"
                             :settings="timer.settings.value"
+                            @preview-sound="timer.previewSound"
                             @toggle-notification="timer.enableSystemNotification"
                             @update="timer.updateSettings"
                         />

@@ -8,11 +8,11 @@ import {
 import { DEFAULT_SETTINGS } from './types';
 import type { Settings } from './types';
 import {
-    parseSettings, validateMinutes, 
+    parseSettings, validateBreakSeconds, validateMinutes, 
 } from './validation';
 
 const custom: Settings = {
-    workMinutes: 45, breakMinutes: 10, systemNotification: true, 
+    workMinutes: 45, breakSeconds: 600, systemNotification: true, alertSound: 'harp', 
 };
 
 describe('validateMinutes', () => {
@@ -39,11 +39,60 @@ describe('validateMinutes', () => {
     });
 });
 
+describe('validateBreakSeconds', () => {
+    it.each([
+        30,
+        60,
+        90,
+        300,
+        7200,
+    ])('accepts %i', (value) => {
+        expect(validateBreakSeconds(value)).toBeNull();
+    });
+
+    it.each([
+        0,
+        29,
+        45,
+        100,
+        7230,
+        7201,
+        30.5,
+        '30',
+        null,
+        Number.NaN,
+    ])('rejects %s', (value) => {
+        expect(validateBreakSeconds(value)).not.toBeNull();
+    });
+});
+
 describe('parseSettings', () => {
     it('accepts valid settings', () => {
         expect(parseSettings(custom)).toEqual(custom);
     });
 
+    it('fills the default alert sound for data without the field', () => {
+        const legacy = {
+            workMinutes: 45, breakSeconds: 600, systemNotification: true, 
+        };
+        expect(parseSettings(legacy)).toEqual({
+            ...legacy, alertSound: 'beep', 
+        });
+    });
+
+    it('converts legacy breakMinutes to seconds', () => {
+        expect(parseSettings({
+            workMinutes: 45, breakMinutes: 10, systemNotification: true, 
+        })).toEqual({
+            workMinutes: 45, breakSeconds: 600, systemNotification: true, alertSound: 'beep', 
+        });
+    });
+
+    it('prefers breakSeconds over legacy breakMinutes', () => {
+        expect(parseSettings({
+            workMinutes: 25, breakSeconds: 30, breakMinutes: 10, systemNotification: false, 
+        })?.breakSeconds).toBe(30);
+    });
     it.each([
         null,
         'abc',
@@ -58,7 +107,22 @@ describe('parseSettings', () => {
             workMinutes: 25, breakMinutes: 5, 
         },
         {
+            workMinutes: 25, breakSeconds: 45, systemNotification: false, 
+        },
+        {
+            workMinutes: 25, breakSeconds: 'abc', systemNotification: false, 
+        },
+        {
+            workMinutes: 25, systemNotification: false, 
+        },
+        {
             workMinutes: 25, breakMinutes: 5, systemNotification: 'yes', 
+        },
+        {
+            workMinutes: 25, breakMinutes: 5, systemNotification: false, alertSound: 'ringtone', 
+        },
+        {
+            workMinutes: 25, breakMinutes: 5, systemNotification: false, alertSound: 3, 
         },
     ])('rejects %j', (value) => {
         expect(parseSettings(value)).toBeNull();
@@ -80,6 +144,18 @@ describe('storage', () => {
     it('round-trips saved settings', () => {
         expect(saveSettings(localStorage, custom).ok).toBe(true);
         expect(loadSettings(localStorage)).toEqual(custom);
+    });
+
+    it('keeps stored times when upgrading legacy data (breakMinutes, no alertSound)', () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            version: 1,
+            settings: {
+                workMinutes: 45, breakMinutes: 10, systemNotification: true, 
+            },
+        }));
+        expect(loadSettings(localStorage)).toEqual({
+            workMinutes: 45, breakSeconds: 600, systemNotification: true, alertSound: 'beep', 
+        });
     });
 
     it('falls back to defaults on invalid JSON', () => {

@@ -1,31 +1,55 @@
 <script setup lang="ts">
 import type { NotificationSupport } from '@/alerts/notification';
 import {
-    MAX_MINUTES, MIN_MINUTES, MINUTE_STEP, 
+    ALERT_SOUNDS, isAlertSoundId, 
+} from '@/alerts/soundCatalog';
+import { formatBreakDuration } from '@/settings/format';
+import {
+    BREAK_SECOND_STEP, MAX_BREAK_SECONDS, MAX_MINUTES, MIN_BREAK_SECONDS, MIN_MINUTES, MINUTE_STEP,
 } from '@/settings/types';
 import type { Settings } from '@/settings/types';
-import { validateMinutes } from '@/settings/validation';
+import {
+    validateBreakSeconds, validateMinutes, 
+} from '@/settings/validation';
 
 const props = defineProps<{
     settings: Settings;
     locked: boolean;
     notificationSupport: NotificationSupport;
+    previewError: string | null;
 }>();
 
 const emit = defineEmits<{
     update: [settings: Settings];
     toggleNotification: [enabled: boolean];
+    previewSound: [];
 }>();
 
-type MinutesKey = 'workMinutes' | 'breakMinutes';
+const onAlertSound = (value: unknown): void => {
+    if (!isAlertSoundId(value)) {
+        return;
+    }
+    emit('update', {
+        ...props.settings, alertSound: value, 
+    });
+};
 
 // slider 已限制範圍與步進，這裡仍驗證一次，避免非預期的值寫入設定。
-const onMinutes = (key: MinutesKey, value: unknown): void => {
+const onWorkMinutes = (value: unknown): void => {
     if (typeof value !== 'number' || validateMinutes(value) !== null) {
         return;
     }
     emit('update', {
-        ...props.settings, [key]: value, 
+        ...props.settings, workMinutes: value, 
+    });
+};
+
+const onBreakSeconds = (value: unknown): void => {
+    if (typeof value !== 'number' || validateBreakSeconds(value) !== null) {
+        return;
+    }
+    emit('update', {
+        ...props.settings, breakSeconds: value, 
     });
 };
 </script>
@@ -49,7 +73,7 @@ const onMinutes = (key: MinutesKey, value: unknown): void => {
                 :min="MIN_MINUTES"
                 :model-value="props.settings.workMinutes"
                 :step="MINUTE_STEP"
-                @update:model-value="onMinutes('workMinutes', $event)"
+                @update:model-value="onWorkMinutes"
             />
         </div>
 
@@ -59,30 +83,67 @@ const onMinutes = (key: MinutesKey, value: unknown): void => {
                     Break time
                 </div>
                 <div class="text-h5 font-weight-bold">
-                    {{ props.settings.breakMinutes }} min
+                    {{ formatBreakDuration(props.settings.breakSeconds) }}
                 </div>
             </div>
             <v-slider
                 color="success"
                 :disabled="props.locked"
                 hide-details
-                :max="MAX_MINUTES"
-                :min="MIN_MINUTES"
-                :model-value="props.settings.breakMinutes"
-                :step="MINUTE_STEP"
-                @update:model-value="onMinutes('breakMinutes', $event)"
+                :max="MAX_BREAK_SECONDS"
+                :min="MIN_BREAK_SECONDS"
+                :model-value="props.settings.breakSeconds"
+                :step="BREAK_SECOND_STEP"
+                @update:model-value="onBreakSeconds"
             />
         </div>
 
         <div>
-            <v-switch
-                color="primary"
-                :disabled="props.notificationSupport === 'unsupported'"
+            <div class="d-flex justify-space-between align-center">
+                <div class="text-subtitle-2">
+                    Alert sound
+                </div>
+                <v-btn
+                    aria-label="Preview alert sound"
+                    density="comfortable"
+                    icon="mdi-play"
+                    variant="tonal"
+                    @click="emit('previewSound')"
+                />
+            </div>
+            <v-select
+                class="mt-2"
+                density="comfortable"
+                :disabled="props.locked"
                 hide-details
-                label="System notifications"
-                :model-value="props.settings.systemNotification"
-                @update:model-value="emit('toggleNotification', Boolean($event))"
+                item-title="label"
+                item-value="id"
+                :items="ALERT_SOUNDS"
+                :model-value="props.settings.alertSound"
+                @update:model-value="onAlertSound"
             />
+            <div
+                v-if="props.previewError"
+                class="text-caption text-error mt-1"
+            >
+                {{ props.previewError }}
+            </div>
+        </div>
+
+        <div>
+            <div class="d-flex justify-space-between align-center">
+                <div class="text-subtitle-2">
+                    System notifications
+                </div>
+                <v-switch
+                    color="primary"
+                    density="comfortable"
+                    :disabled="props.notificationSupport === 'unsupported'"
+                    hide-details
+                    :model-value="props.settings.systemNotification"
+                    @update:model-value="emit('toggleNotification', Boolean($event))"
+                />
+            </div>
             <div
                 v-if="props.notificationSupport === 'unsupported'"
                 class="text-caption text-medium-emphasis"

@@ -2,7 +2,9 @@ import {
     beforeEach, describe, expect, it, vi, 
 } from 'vitest';
 
-import { dispatchAlerts } from './alertService';
+import {
+    dispatchAlerts, playsAlertSound, 
+} from './alertService';
 import type { AlertChannel } from './alertService';
 import {
     getNotificationSupport, showSystemNotification, 
@@ -58,6 +60,20 @@ describe('dispatchAlerts', () => {
         ];
         const failures = await dispatchAlerts(event, channels);
         expect(failures[0]?.message).toBe('nope');
+    });
+});
+
+describe('playsAlertSound', () => {
+    it('plays the sound when focus ends', () => {
+        expect(playsAlertSound({
+            phase: 'WORKING', endedAt: 0, 
+        })).toBe(true);
+    });
+
+    it('stays silent when the break ends', () => {
+        expect(playsAlertSound({
+            phase: 'BREAK', endedAt: 0, 
+        })).toBe(false);
     });
 });
 

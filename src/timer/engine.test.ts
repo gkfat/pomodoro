@@ -3,7 +3,7 @@ import {
 } from 'vitest';
 
 import {
-    formatClock, formatRemaining, getNextAlertAt, getPhase, getRemainingMs, 
+    formatClock, formatDocumentTitle, formatRemaining, getNextAlertAt, getPhase, getRemainingMs, 
 } from './display';
 import {
     createInitialState, pause, reset, resume, start, tick, 
@@ -125,6 +125,23 @@ describe('engine tick', () => {
         const working = unwrap(start(createInitialState(), 0, durations));
         const paused = unwrap(pause(working, MIN));
         expect(tick(paused, 999 * MIN, durations).events).toEqual([]);
+    });
+});
+
+describe('formatDocumentTitle', () => {
+    it('shows only the app name while idle', () => {
+        expect(formatDocumentTitle(createInitialState(), '25:00')).toBe('Pomodoro');
+    });
+
+    it('shows the remaining time while running', () => {
+        const working = unwrap(start(createInitialState(), 0, durations));
+        expect(formatDocumentTitle(working, '24:59')).toBe('24:59 · Pomodoro');
+    });
+
+    it('marks the title as paused', () => {
+        const working = unwrap(start(createInitialState(), 0, durations));
+        const paused = unwrap(pause(working, MIN));
+        expect(formatDocumentTitle(paused, '24:00')).toBe('Paused 24:00 · Pomodoro');
     });
 });
 

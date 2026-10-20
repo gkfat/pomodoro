@@ -1,8 +1,10 @@
 import {
-    computed, onBeforeUnmount, onMounted, ref, shallowRef,
+    computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect,
 } from 'vue';
 
-import { dispatchAlerts } from '@/alerts/alertService';
+import {
+    dispatchAlerts, playsAlertSound, 
+} from '@/alerts/alertService';
 import type { AlertChannel } from '@/alerts/alertService';
 import {
     getNotificationSupport, requestNotificationPermission, showSystemNotification,
@@ -14,7 +16,7 @@ import {
 } from '@/settings/storage';
 import type { Settings } from '@/settings/types';
 import {
-    formatClock, formatRemaining, getNextAlertAt, getPhase, getRemainingMs,
+    APP_TITLE, formatClock, formatDocumentTitle, formatRemaining, getNextAlertAt, getPhase, getRemainingMs,
 } from '@/timer/display';
 import {
     createInitialState, pause, reset, resume, start, tick,
@@ -25,6 +27,7 @@ import type {
 
 const TICK_INTERVAL_MS = 250;
 const MS_PER_MINUTE = 60_000;
+const MS_PER_SECOND = 1000;
 const TEST_PHASE_MS = 10_000;
 
 const ENDED_MESSAGE = {
@@ -39,6 +42,7 @@ export const useTimer = () => {
     // 測試模式：工作與休息皆縮為 10 秒，不改動已儲存的設定。
     const isTestRun = ref(false);
     const notice = ref<string | null>(null);
+    const previewError = ref<string | null>(null);
     const errorMessage = ref<string | null>(null);
     const notificationSupport = ref<NotificationSupport>(getNotificationSupport());
 
@@ -51,7 +55,7 @@ export const useTimer = () => {
         }
         : {
             workMs: settings.value.workMinutes * MS_PER_MINUTE,
-            breakMs: settings.value.breakMinutes * MS_PER_MINUTE,
+            breakMs: settings.value.breakSeconds * MS_PER_SECOND,
         }));
 
     const remainingText = computed(() =>
@@ -70,14 +74,17 @@ export const useTimer = () => {
     });
     const isSettingsLocked = computed(() => state.value.status !== 'IDLE');
 
-    const alertChannels = (): AlertChannel[] => {
+    const alertChannels = (event: PhaseEndedEvent): AlertChannel[] => {
         const channels: AlertChannel[] = [
             {
-                name: 'Visual', run: (event) => { notice.value = ENDED_MESSAGE[event.phase]; }, 
-            }, {
-                name: 'Sound', run: () => sound.play(), 
+                name: 'Visual', run: () => { notice.value = ENDED_MESSAGE[event.phase]; }, 
             },
         ];
+        if (playsAlertSound(event)) {
+            channels.push({
+                name: 'Sound', run: () => sound.play(settings.value.alertSound), 
+            });
+        }
         if (settings.value.systemNotification) {
             channels.push({
                 name: 'System notification',
@@ -89,7 +96,7 @@ export const useTimer = () => {
 
     const handleEvents = async (events: PhaseEndedEvent[]): Promise<void> => {
         for (const event of events) {
-            const failures = await dispatchAlerts(event, alertChannels());
+            const failures = await dispatchAlerts(event, alertChannels(event));
             const reasons = failures.map((failure) => `${failure.channel}: ${failure.message}`);
             if (reasons.length > 0) {
                 errorMessage.value = `Some alerts failed; falling back to the in-page alert. ${reasons.join('; ')}`;
@@ -124,6 +131,7 @@ export const useTimer = () => {
 
     const onStart = (): void => {
         sound.unlock();
+        sound.preload(settings.value.alertSound);
         // 新一輪開始時回到正常時長。
         if (state.value.status === 'IDLE') {
             isTestRun.value = false;
@@ -136,6 +144,7 @@ export const useTimer = () => {
         }
         isTestRun.value = true;
         sound.unlock();
+        sound.preload(settings.value.alertSound);
         apply((at) => start(state.value, at, durations.value));
     };
     const onPause = (): void => apply((at) => pause(state.value, at));
@@ -150,9 +159,23 @@ export const useTimer = () => {
             errorMessage.value = 'Settings cannot be changed while the timer is running';
             return;
         }
+        if (next.alertSound !== settings.value.alertSound) {
+            sound.preload(next.alertSound);
+        }
         settings.value = next;
         const result = saveSettings(localStorage, next);
         errorMessage.value = result.ok ? null : result.error;
+    };
+
+    // 試聽不改變設定，計時進行中也可使用；失敗時把錯誤交給設定畫面顯示。
+    const previewSound = async (): Promise<void> => {
+        previewError.value = null;
+        try {
+            await sound.play(settings.value.alertSound);
+        } catch (error) {
+            console.error('[alerts] 試聽失敗', error);
+            previewError.value = error instanceof Error ? error.message : String(error);
+        }
     };
 
     const enableSystemNotification = async (enabled: boolean): Promise<void> => {
@@ -183,12 +206,18 @@ export const useTimer = () => {
         }
     };
 
+    // 分頁標題跟著倒數，切到其他分頁也看得到剩餘時間。
+    watchEffect(() => {
+        document.title = formatDocumentTitle(state.value, remainingText.value);
+    });
+
     onMounted(() => {
         intervalId = setInterval(runTick, TICK_INTERVAL_MS);
         document.addEventListener('visibilitychange', onVisibilityChange);
     });
 
     onBeforeUnmount(() => {
+        document.title = APP_TITLE;
         if (intervalId !== null) {
             clearInterval(intervalId);
         }
@@ -201,6 +230,7 @@ export const useTimer = () => {
         notice,
         errorMessage,
         notificationSupport,
+        previewError,
         remainingText,
         progress,
         isBreak,
@@ -212,6 +242,7 @@ export const useTimer = () => {
         resume: onResume,
         reset: onReset,
         updateSettings,
+        previewSound,
         enableSystemNotification,
     };
 };

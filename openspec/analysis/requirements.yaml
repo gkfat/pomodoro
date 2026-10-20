@@ -11,7 +11,7 @@ functional:
     context: [CTX-ACTOR-001, CTX-ASM-002]
   - id: FR-002
     title: 自訂休息時間
-    description: 系統 SHALL 允許使用者以拖曳條設定休息階段長度（以 5 分鐘為單位，5–120 分鐘），拖曳時即時顯示目前數值。
+    description: 系統 SHALL 允許使用者以拖曳條設定休息階段長度（以 30 秒為單位，30 秒–120 分鐘），拖曳時即時顯示目前數值。
     priority: P0
     context: [CTX-ACTOR-001, CTX-ASM-002]
   - id: FR-003
@@ -80,6 +80,6 @@ non_functional:
   - id: NFR-005
     category: usability
     title: 輸入範圍限制
-    description: 時間設定 MUST 限制為 5 分鐘單位、5–120 分鐘；拖曳條本身限制取值，儲存資料讀取時仍須驗證（NFR-003）。
-    metric: "可選取值僅為 5 的倍數且介於 5–120 分鐘"
+    description: 工作時間 MUST 限制為 5 分鐘單位、5–120 分鐘，休息時間 MUST 限制為 30 秒單位、30 秒–120 分鐘；拖曳條本身限制取值，儲存資料讀取時仍須驗證（NFR-003）。
+    metric: "工作時間僅為 5 的倍數分鐘且介於 5–120；休息時間僅為 30 的倍數秒且介於 30 秒–120 分鐘"
     context: [CTX-ACTOR-001, CTX-ASM-002]

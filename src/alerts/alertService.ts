@@ -5,6 +5,9 @@ export type AlertChannel = {
     run: (event: PhaseEndedEvent) => void | Promise<void>;
 };
 
+// 只有工作結束播放提示音；休息結束僅以視覺提示（與系統通知）告知，不播放音樂。
+export const playsAlertSound = (event: PhaseEndedEvent): boolean => event.phase === 'WORKING';
+
 export type AlertFailure = {
     channel: string;
     message: string;
