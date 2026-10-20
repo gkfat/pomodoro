@@ -1,0 +1,85 @@
+version: 1
+generatedBy: system-analysis
+updatedAt: 2026-10-20T07:30:00Z
+relatedChanges: [pomodoro-p0-mvp]
+
+functional:
+  - id: FR-001
+    title: 自訂工作時間
+    description: 系統 SHALL 允許使用者以拖曳條設定工作階段長度（以 5 分鐘為單位，5–120 分鐘），拖曳時即時顯示目前數值。
+    priority: P0
+    context: [CTX-ACTOR-001, CTX-ASM-002]
+  - id: FR-002
+    title: 自訂休息時間
+    description: 系統 SHALL 允許使用者以拖曳條設定休息階段長度（以 5 分鐘為單位，5–120 分鐘），拖曳時即時顯示目前數值。
+    priority: P0
+    context: [CTX-ACTOR-001, CTX-ASM-002]
+  - id: FR-003
+    title: 計時控制
+    description: 系統 SHALL 提供開始、暫停、繼續、Restart 操作；暫停後繼續 MUST 從剩餘時間接續，Restart MUST 回到目前階段起始狀態。
+    priority: P0
+    context: [CTX-ACTOR-001, CTX-CON-002]
+  - id: FR-004
+    title: 階段結束提醒
+    description: 系統 SHALL 在工作階段與休息階段結束時各觸發一次提醒（頁內視覺提示 + 音效）。
+    priority: P0
+    context: [CTX-ACTOR-001, CTX-EXT-002, CTX-ASM-004]
+  - id: FR-005
+    title: 瀏覽器系統通知
+    description: 系統 SHALL 於階段結束時發出系統通知；使用者拒絕授權或 API 不可用時 MUST 退回 FR-004 的頁內提醒並告知使用者原因。
+    priority: P0
+    context: [CTX-EXT-003, CTX-ASM-004]
+  - id: FR-006
+    title: 階段切換
+    description: 工作階段結束後系統 SHALL 自動進入休息階段並開始倒數；休息階段結束後系統 MUST 停止並等待使用者按下開始，不自動啟動下一輪。
+    priority: P0
+    context: [CTX-ACTOR-001]
+    note: "2026-10-20 修訂：工作→休息改為自動；休息→下一輪維持手動；自動循環下一輪不在本次範圍"
+  - id: FR-007
+    title: 設定持久化
+    description: 系統 SHALL 將工作時間、休息時間、提醒偏好存入 localStorage，並於下次開啟時還原；儲存資料 MUST 於讀取時驗證，無效或缺漏時使用預設值。
+    priority: P0
+    context: [CTX-EXT-001, CTX-ASM-005]
+  - id: FR-009
+    title: 計時狀態機
+    description: 計時引擎 SHALL 具備 IDLE（尚未開始或一輪結束）、WORKING、BREAK、PAUSED 四種狀態。WORKING 與 BREAK MUST 存在明確結束時間；WORKING 結束自動進入 BREAK，BREAK 結束回到 IDLE，等待使用者按開始進入下一輪（不自動循環）；非法轉換 MUST 被拒絕。
+    priority: P0
+    context: [CTX-CON-004, CTX-ACTOR-001]
+    note: "狀態來自 Notion 內嵌圖，2026-10-20 移除 COMPLETED（與 IDLE 無差別）；IDLE 銜接下一輪見 FR-006，PAUSED 回復原階段"
+  - id: FR-008
+    title: 狀態顯示
+    description: 系統 SHALL 顯示剩餘時間（mm:ss；尚未開始時為設定的工作時長）、目前階段（工作／休息，以底色區分）、計時狀態，以及進行中的下一次提醒時間（時鐘時間）；沒有進行中結束時間時不顯示下一次提醒。
+    priority: P0
+    context: [CTX-ACTOR-001, CTX-ASM-003]
+
+non_functional:
+  - id: NFR-001
+    category: accuracy
+    title: 背景分頁計時準確度
+    description: 計時 MUST 以時間戳（結束時間）計算剩餘時間，不依賴 tick 累加；分頁背景或裝置睡眠後回到前景，顯示 MUST 於 1 秒內修正。
+    metric: "背景 30 分鐘後誤差 ≤ 1s"
+    context: [CTX-CON-002]
+  - id: NFR-002
+    category: reliability
+    title: 提醒不遺漏
+    description: 若階段於背景或睡眠期間已到期，回到前景時 MUST 立即觸發該階段的提醒，且每個階段結束只提醒一次。
+    metric: "每階段提醒次數 = 1"
+    context: [CTX-CON-002, CTX-ACTOR-001]
+  - id: NFR-003
+    category: security
+    title: 本機資料驗證
+    description: 從 localStorage 讀取的資料 MUST 以 runtime schema 驗證（不信任儲存內容）。
+    metric: "無效資料 100% 退回預設值且不拋出未處理例外"
+    context: [CTX-EXT-001]
+  - id: NFR-004
+    category: maintainability
+    title: 純前端與技術棧一致
+    description: 實作 MUST 沿用既有 Vue 3 + TypeScript + Vuetify 4 技術棧，不新增後端或非必要依賴；所有狀態轉換集中於單一計時引擎，UI 元件僅呼叫引擎、不得自行改動倒數時間，以利單元測試。
+    metric: "計時引擎有單元測試覆蓋 FR-003、FR-009、NFR-001、NFR-002"
+    context: [CTX-CON-001, CTX-CON-004]
+  - id: NFR-005
+    category: usability
+    title: 輸入範圍限制
+    description: 時間設定 MUST 限制為 5 分鐘單位、5–120 分鐘；拖曳條本身限制取值，儲存資料讀取時仍須驗證（NFR-003）。
+    metric: "可選取值僅為 5 的倍數且介於 5–120 分鐘"
+    context: [CTX-ACTOR-001, CTX-ASM-002]

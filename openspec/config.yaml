@@ -1,0 +1,8 @@
+schema: spec-driven
+
+context: |
+  專案：pomodoro — 蕃茄鐘工作法小工具，純前端 SPA（無後端）。
+  技術：Vue 3 + TypeScript + Vuetify + Vite，pnpm 管理，ESLint 兼任 formatter。
+
+  規格目錄：openspec/specs/<capability>/spec.md。
+  變更目錄：openspec/changes/<name>/（歸檔於 openspec/changes/archive/YYYY-MM-DD-<name>/）。

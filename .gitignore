@@ -1,0 +1,17 @@
+.DS_Store
+node_modules
+dist
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+.pnpm-store/

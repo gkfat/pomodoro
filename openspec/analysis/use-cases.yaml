@@ -1,0 +1,223 @@
+version: 1
+generatedBy: requirement-modeling
+updatedAt: 2026-10-20T08:00:00Z
+relatedChanges: [pomodoro-p0-mvp]
+
+stories:
+  - id: STORY-001
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 自訂工作與休息時間, so that 符合我的工作節奏"
+    requirements: [FR-001, FR-002]
+  - id: STORY-002
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 開始、暫停、繼續、Restart 計時, so that 我能隨時掌控節奏"
+    requirements: [FR-003, FR-009]
+  - id: STORY-003
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 工作與休息結束時被提醒, so that 即使沒盯著畫面也不會錯過"
+    requirements: [FR-004, FR-005]
+  - id: STORY-004
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 階段結束後由我決定何時開始下一階段, so that 我不會被自動切換打斷"
+    requirements: [FR-006, FR-009]
+  - id: STORY-005
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 系統記住上次的設定, so that 不必每次重新輸入"
+    requirements: [FR-007]
+  - id: STORY-006
+    actor: CTX-ACTOR-001
+    story: "As a 使用者, I want 看到剩餘時間、目前階段與下一次提醒時間, so that 我知道何時該休息或回來工作"
+    requirements: [FR-008]
+
+use_cases:
+  - id: UC-001
+    name: 設定工作與休息時間
+    actor: CTX-ACTOR-001
+    stories: [STORY-001, STORY-005]
+    requirements: [FR-001, FR-002, FR-007]
+    preconditions:
+      - 計時引擎狀態為 IDLE（計時進行中不可修改設定）
+    mainFlow:
+      - step: 1
+        action: 使用者拖曳工作時間拖曳條，畫面即時顯示目前分鐘數
+      - step: 2
+        action: 使用者拖曳休息時間拖曳條，畫面即時顯示目前分鐘數
+        constraints: [NFR-005]
+      - step: 3
+        action: 系統驗證兩者皆為 5 的倍數且介於 5–120
+      - step: 4
+        action: 系統將設定存入 localStorage
+    alternateFlows:
+      - name: localStorage 寫入失敗
+        at: 4
+        action: 系統記錄錯誤並告知使用者設定僅本次有效
+    postconditions:
+      - 引擎設定已更新；下次開啟可還原
+
+  - id: UC-002
+    name: 載入已儲存設定
+    actor: CTX-ACTOR-001
+    stories: [STORY-005]
+    requirements: [FR-007]
+    preconditions:
+      - 使用者開啟或重新整理頁面
+    mainFlow:
+      - step: 1
+        action: 系統讀取 localStorage 的設定
+      - step: 2
+        action: 系統以 runtime schema 驗證資料
+        constraints: [NFR-003]
+      - step: 3
+        action: 系統以驗證後的設定初始化引擎，狀態為 IDLE
+    alternateFlows:
+      - name: 無資料或資料無效
+        at: 2
+        action: 系統記錄警告並使用預設值（25／5）
+        constraints: [NFR-003]
+      - name: 重新整理前有進行中計時
+        at: 3
+        action: 不還原計時，回到 IDLE（CTX-ASM-005）
+    postconditions:
+      - 引擎為 IDLE 且設定有效
+
+  - id: UC-003
+    name: 開始計時
+    actor: CTX-ACTOR-001
+    stories: [STORY-002, STORY-006]
+    requirements: [FR-003, FR-008, FR-009]
+    preconditions:
+      - 引擎狀態為 IDLE（含一輪結束後，UC-006）
+    mainFlow:
+      - step: 1
+        action: 使用者按下開始
+      - step: 2
+        action: 引擎進入 WORKING，記錄結束時間 = 現在 + 工作時長
+        constraints: [NFR-001]
+      - step: 3
+        action: 畫面顯示剩餘時間、階段、下一次提醒時間
+    alternateFlows:
+      - name: 非法狀態開始
+        at: 1
+        action: 引擎拒絕轉換並維持原狀態（例如計時中再按開始）
+    postconditions:
+      - 引擎為 WORKING，具明確結束時間
+
+  - id: UC-004
+    name: 暫停與繼續
+    actor: CTX-ACTOR-001
+    stories: [STORY-002]
+    requirements: [FR-003, FR-009]
+    preconditions:
+      - 引擎為 WORKING 或 BREAK（暫停）；或為 PAUSED（繼續）
+    mainFlow:
+      - step: 1
+        action: 使用者按下暫停
+      - step: 2
+        action: 引擎記錄剩餘時間並進入 PAUSED，取消該階段的待觸發提醒
+      - step: 3
+        action: 使用者按下繼續
+      - step: 4
+        action: 引擎以剩餘時間重新計算結束時間，回到暫停前的階段
+        constraints: [NFR-001]
+    alternateFlows:
+      - name: 非法狀態
+        at: 1
+        action: IDLE 時暫停、非 PAUSED 時繼續皆被拒絕
+    postconditions:
+      - 剩餘時間不因暫停而流失
+
+  - id: UC-005
+    name: Restart 計時
+    actor: CTX-ACTOR-001
+    stories: [STORY-002]
+    requirements: [FR-003, FR-009]
+    preconditions:
+      - 引擎不在 IDLE
+    mainFlow:
+      - step: 1
+        action: 使用者按下 Restart
+      - step: 2
+        action: 引擎取消所有待觸發提醒並回到 IDLE
+    alternateFlows:
+      - name: 已在 IDLE
+        at: 1
+        action: 不動作
+    postconditions:
+      - 引擎為 IDLE；舊提醒不會再觸發
+
+  - id: UC-006
+    name: 階段結束提醒與階段切換
+    actor: CTX-ACTOR-001
+    stories: [STORY-003, STORY-004]
+    requirements: [FR-004, FR-005, FR-006, FR-009]
+    preconditions:
+      - 引擎為 WORKING 或 BREAK 且到達結束時間
+    mainFlow:
+      - step: 1
+        action: 引擎偵測結束時間已到
+        constraints: [NFR-001]
+      - step: 2
+        action: 系統觸發一次提醒：頁內視覺提示 + 音效
+        constraints: [NFR-002]
+      - step: 3
+        action: 若已授權，系統同時發出瀏覽器系統通知
+      - step: 4
+        action: WORKING 結束 → 自動進入 BREAK 並以休息時長開始倒數；BREAK 結束 → 回到 IDLE 並停止，等待使用者按開始（UC-003）
+    alternateFlows:
+      - name: 階段於背景／睡眠期間到期
+        at: 1
+        action: 使用者回到前景時立即補觸發提醒，且僅一次；休息從該時刻起算
+        constraints: [NFR-001, NFR-002]
+      - name: 通知未授權、被拒或 API 不可用
+        at: 3
+        action: 退回頁內提醒並告知原因
+      - name: 音效播放失敗（例如瀏覽器 autoplay 限制）
+        at: 2
+        action: 記錄錯誤並仍顯示視覺提示
+    postconditions:
+      - 該階段只提醒一次；BREAK 結束後引擎等待使用者，不自動開始下一輪
+    note: "2026-10-20 修訂：工作→休息改為自動"
+
+  - id: UC-007
+    name: 授權瀏覽器系統通知
+    actor: CTX-ACTOR-001
+    stories: [STORY-003]
+    requirements: [FR-005]
+    preconditions:
+      - 瀏覽器支援 Notification API 且權限為 default
+    mainFlow:
+      - step: 1
+        action: 使用者在設定中啟用系統通知
+      - step: 2
+        action: 系統向瀏覽器請求通知權限
+      - step: 3
+        action: 使用者允許，系統記錄通知已啟用
+    alternateFlows:
+      - name: 使用者拒絕或已被封鎖
+        at: 3
+        action: 系統顯示說明並維持頁內提醒
+      - name: 瀏覽器不支援
+        at: 1
+        action: 隱藏／停用該選項並說明
+    postconditions:
+      - 通知偏好已儲存（UC-001）
+
+  - id: UC-008
+    name: 查看計時狀態
+    actor: CTX-ACTOR-001
+    stories: [STORY-006]
+    requirements: [FR-008]
+    preconditions:
+      - 頁面已載入
+    mainFlow:
+      - step: 1
+        action: 系統顯示剩餘時間（mm:ss）與目前階段與計時狀態
+      - step: 2
+        action: 系統顯示下一次提醒的時鐘時間（結束時間）
+        constraints: [NFR-001]
+    alternateFlows:
+      - name: IDLE／PAUSED
+        at: 2
+        action: 無進行中結束時間時，不顯示下一次提醒
+    postconditions:
+      - 顯示內容皆由引擎狀態推導，UI 不自行計時

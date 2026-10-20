@@ -1,0 +1,217 @@
+import {
+    computed, onBeforeUnmount, onMounted, ref, shallowRef,
+} from 'vue';
+
+import { dispatchAlerts } from '@/alerts/alertService';
+import type { AlertChannel } from '@/alerts/alertService';
+import {
+    getNotificationSupport, requestNotificationPermission, showSystemNotification,
+} from '@/alerts/notification';
+import type { NotificationSupport } from '@/alerts/notification';
+import { createSoundPlayer } from '@/alerts/sound';
+import {
+    loadSettings, saveSettings, 
+} from '@/settings/storage';
+import type { Settings } from '@/settings/types';
+import {
+    formatClock, formatRemaining, getNextAlertAt, getPhase, getRemainingMs,
+} from '@/timer/display';
+import {
+    createInitialState, pause, reset, resume, start, tick,
+} from '@/timer/engine';
+import type {
+    PhaseEndedEvent, TimerDurations, TimerState, TransitionResult,
+} from '@/timer/types';
+
+const TICK_INTERVAL_MS = 250;
+const MS_PER_MINUTE = 60_000;
+const TEST_PHASE_MS = 10_000;
+
+const ENDED_MESSAGE = {
+    WORKING: 'Focus finished. Break started.',
+    BREAK: 'Break finished. Start the next round when you are ready.',
+} as const;
+
+export const useTimer = () => {
+    const settings = ref<Settings>(loadSettings(localStorage));
+    const state = shallowRef<TimerState>(createInitialState());
+    const now = ref(Date.now());
+    // 測試模式：工作與休息皆縮為 10 秒，不改動已儲存的設定。
+    const isTestRun = ref(false);
+    const notice = ref<string | null>(null);
+    const errorMessage = ref<string | null>(null);
+    const notificationSupport = ref<NotificationSupport>(getNotificationSupport());
+
+    const sound = createSoundPlayer();
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const durations = computed<TimerDurations>(() => (isTestRun.value
+        ? {
+            workMs: TEST_PHASE_MS, breakMs: TEST_PHASE_MS, 
+        }
+        : {
+            workMs: settings.value.workMinutes * MS_PER_MINUTE,
+            breakMs: settings.value.breakMinutes * MS_PER_MINUTE,
+        }));
+
+    const remainingText = computed(() =>
+        formatRemaining(getRemainingMs(state.value, now.value, durations.value)));
+    // 環形進度 = 目前階段剩餘比例（IDLE 為滿環，隨倒數縮短）。
+    const progress = computed(() => {
+        const total = getPhase(state.value) === 'BREAK' ? durations.value.breakMs : durations.value.workMs;
+        const remaining = getRemainingMs(state.value, now.value, durations.value);
+        return Math.min(100, Math.max(0, (remaining / total) * 100));
+    });
+    // PAUSED 沿用暫停前的階段；其餘非休息狀態一律視為專注。
+    const isBreak = computed(() => getPhase(state.value) === 'BREAK');
+    const nextAlertText = computed(() => {
+        const at = getNextAlertAt(state.value);
+        return at === null ? '—' : formatClock(at);
+    });
+    const isSettingsLocked = computed(() => state.value.status !== 'IDLE');
+
+    const alertChannels = (): AlertChannel[] => {
+        const channels: AlertChannel[] = [
+            {
+                name: 'Visual', run: (event) => { notice.value = ENDED_MESSAGE[event.phase]; }, 
+            }, {
+                name: 'Sound', run: () => sound.play(), 
+            },
+        ];
+        if (settings.value.systemNotification) {
+            channels.push({
+                name: 'System notification',
+                run: (event) => showSystemNotification('Pomodoro', ENDED_MESSAGE[event.phase]),
+            });
+        }
+        return channels;
+    };
+
+    const handleEvents = async (events: PhaseEndedEvent[]): Promise<void> => {
+        for (const event of events) {
+            const failures = await dispatchAlerts(event, alertChannels());
+            const reasons = failures.map((failure) => `${failure.channel}: ${failure.message}`);
+            if (reasons.length > 0) {
+                errorMessage.value = `Some alerts failed; falling back to the in-page alert. ${reasons.join('; ')}`;
+            }
+        }
+    };
+
+    const runTick = (): void => {
+        now.value = Date.now();
+        const result = tick(state.value, now.value, durations.value);
+        state.value = result.state;
+        // 一輪結束後回到設定的時長，測試用的 10 秒不再沿用。
+        if (result.events.some((event) => event.phase === 'BREAK')) {
+            isTestRun.value = false;
+        }
+        if (result.events.length > 0) {
+            void handleEvents(result.events);
+        }
+    };
+
+    const apply = (transition: (at: number) => TransitionResult): void => {
+        now.value = Date.now();
+        const result = transition(now.value);
+        if (!result.ok) {
+            errorMessage.value = result.error;
+            return;
+        }
+        errorMessage.value = null;
+        notice.value = null;
+        state.value = result.state;
+    };
+
+    const onStart = (): void => {
+        sound.unlock();
+        // 新一輪開始時回到正常時長。
+        if (state.value.status === 'IDLE') {
+            isTestRun.value = false;
+        }
+        apply((at) => start(state.value, at, durations.value));
+    };
+    const onStartTest = (): void => {
+        if (state.value.status !== 'IDLE') {
+            return;
+        }
+        isTestRun.value = true;
+        sound.unlock();
+        apply((at) => start(state.value, at, durations.value));
+    };
+    const onPause = (): void => apply((at) => pause(state.value, at));
+    const onResume = (): void => apply((at) => resume(state.value, at));
+    const onReset = (): void => {
+        isTestRun.value = false;
+        apply(() => reset());
+    };
+
+    const updateSettings = (next: Settings): void => {
+        if (isSettingsLocked.value) {
+            errorMessage.value = 'Settings cannot be changed while the timer is running';
+            return;
+        }
+        settings.value = next;
+        const result = saveSettings(localStorage, next);
+        errorMessage.value = result.ok ? null : result.error;
+    };
+
+    const enableSystemNotification = async (enabled: boolean): Promise<void> => {
+        if (!enabled) {
+            updateSettings({
+                ...settings.value, systemNotification: false, 
+            });
+            return;
+        }
+        notificationSupport.value = await requestNotificationPermission();
+        if (notificationSupport.value !== 'granted') {
+            errorMessage.value = notificationSupport.value === 'unsupported'
+                ? 'This browser does not support system notifications; using in-page alerts'
+                : 'Notification permission was not granted; using in-page alerts';
+            updateSettings({
+                ...settings.value, systemNotification: false, 
+            });
+            return;
+        }
+        updateSettings({
+            ...settings.value, systemNotification: true, 
+        });
+    };
+
+    const onVisibilityChange = (): void => {
+        if (document.visibilityState === 'visible') {
+            runTick();
+        }
+    };
+
+    onMounted(() => {
+        intervalId = setInterval(runTick, TICK_INTERVAL_MS);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+    });
+
+    onBeforeUnmount(() => {
+        if (intervalId !== null) {
+            clearInterval(intervalId);
+        }
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+    });
+
+    return {
+        settings,
+        state,
+        notice,
+        errorMessage,
+        notificationSupport,
+        remainingText,
+        progress,
+        isBreak,
+        nextAlertText,
+        isSettingsLocked,
+        start: onStart,
+        startTest: onStartTest,
+        pause: onPause,
+        resume: onResume,
+        reset: onReset,
+        updateSettings,
+        enableSystemNotification,
+    };
+};

@@ -1,0 +1,62 @@
+version: 1
+generatedBy: system-analysis
+updatedAt: 2026-10-20T07:30:00Z
+relatedChanges: [pomodoro-p0-mvp]
+source: "Notion「工作蕃茄鐘」(https://app.notion.com/p/3ff3a31b2dd780cd9797e66ca742e122) — 僅 P0 範圍"
+
+actors:
+  - id: CTX-ACTOR-001
+    name: 使用者
+    description: 在瀏覽器使用蕃茄鐘管理工作／休息節奏的個人工作者（單人、單裝置）
+    source: "Notion 全文"
+
+external_systems:
+  - id: CTX-EXT-001
+    name: Web Storage (localStorage)
+    description: 瀏覽器本機儲存，用於記住上次設定
+    source: "Notion P0「記住上次設定」、階段 2「本機儲存」"
+  - id: CTX-EXT-002
+    name: Web Audio / HTMLAudioElement
+    description: 瀏覽器音效播放，用於階段結束提醒
+    source: "Notion 階段 2「音效」"
+  - id: CTX-EXT-003
+    name: Notification API
+    description: 瀏覽器系統通知（需使用者授權，可能被拒絕）
+    source: "Notion 階段 3「實作通知」"
+    note: "已確認屬 P0，見 CTX-ASM-004"
+
+constraints:
+  - id: CTX-CON-001
+    type: technical
+    description: 純前端 SPA（Vue 3 + TypeScript + Vuetify 4 + Vite），無後端、無帳號
+    source: "Notion 階段 2「純前端 MVP」；專案 CLAUDE.md"
+  - id: CTX-CON-002
+    type: technical
+    description: 背景分頁的 setInterval 會被瀏覽器節流，計時不可僅靠累加 tick
+    source: "Notion 階段 4「背景分頁、睡眠」"
+  - id: CTX-CON-003
+    type: business
+    description: 範圍限定 P0；P1（snooze、設定檔、勿擾等）與 P2（統計、同步等）不在本次
+    source: "Notion P0/P1/P2 分級；使用者決策 2026-10-20"
+
+  - id: CTX-CON-004
+    type: technical
+    description: 所有計時狀態轉換 MUST 集中於單一計時引擎，UI 元件不得自行修改倒數時間（避免重複提醒、暫停後時間錯亂、Restart 後舊通知仍觸發）
+    source: "Notion 內嵌圖「建議的計時狀態」"
+
+assumptions:
+  - id: CTX-ASM-001
+    description: 單一計時器實例，不支援多個並行計時器或多設定檔
+    source: "P1「不同設定檔」被排除"
+  - id: CTX-ASM-002
+    description: 工作／休息時間以「分鐘」為單位自訂，預設 25／5；以拖曳條調整，5 分鐘為單位，範圍 5–120
+    source: "Notion P0 自訂工作／休息時間"
+  - id: CTX-ASM-003
+    description: 「下一次提醒時間」顯示為時鐘時間（例如 14:25），由目前階段結束時間推算
+    source: "Notion P0 最後一項"
+  - id: CTX-ASM-004
+    description: P0 的「提醒」含頁內視覺提示、音效與瀏覽器系統通知；授權被拒時系統通知降級為頁內提示
+    source: "Notion 階段 2/3；使用者確認 2026-10-20（系統通知屬 P0）"
+  - id: CTX-ASM-005
+    description: 重新整理頁面後僅還原設定，不還原進行中計時
+    source: "Notion P0「記住上次設定」；使用者確認 2026-10-20"
