@@ -14,6 +14,11 @@ import { createSoundPlayer } from '@/alerts/sound';
 import {
     loadSettings, saveSettings, 
 } from '@/settings/storage';
+import { toDateKey } from '@/stats/date';
+import { formatFocusTotal } from '@/stats/format';
+import {
+    addFocusTime, loadFocusRecord, 
+} from '@/stats/storage';
 import type { Settings } from '@/settings/types';
 import {
     APP_TITLE, formatClock, formatDocumentTitle, formatRemaining, getNextAlertAt, getPhase, getRemainingMs,
@@ -43,6 +48,7 @@ export const useTimer = () => {
     const isTestRun = ref(false);
     const notice = ref<string | null>(null);
     const previewError = ref<string | null>(null);
+    const focusRecord = shallowRef(loadFocusRecord(localStorage, Date.now()));
     const errorMessage = ref<string | null>(null);
     const notificationSupport = ref<NotificationSupport>(getNotificationSupport());
 
@@ -68,6 +74,10 @@ export const useTimer = () => {
     });
     // PAUSED 沿用暫停前的階段；其餘非休息狀態一律視為專注。
     const isBreak = computed(() => getPhase(state.value) === 'BREAK');
+    // 日期鍵隨 now 重新計算：頁面開著過午夜，今日總計即時歸零。
+    const todayFocusText = computed(() => formatFocusTotal(
+        focusRecord.value.date === toDateKey(now.value) ? focusRecord.value.totalMs : 0,
+    ));
     const nextAlertText = computed(() => {
         const at = getNextAlertAt(state.value);
         return at === null ? '—' : formatClock(at);
@@ -104,6 +114,23 @@ export const useTimer = () => {
         }
     };
 
+    // 只累計完整完成的專注；10-sec test 不計入。
+    const recordFocus = (events: PhaseEndedEvent[]): void => {
+        if (isTestRun.value) {
+            return;
+        }
+        for (const event of events) {
+            if (event.phase !== 'WORKING') {
+                continue;
+            }
+            const result = addFocusTime(localStorage, focusRecord.value, event.endedAt, event.durationMs);
+            focusRecord.value = result.record;
+            if (result.error !== null) {
+                errorMessage.value = result.error;
+            }
+        }
+    };
+
     const runTick = (): void => {
         now.value = Date.now();
         const result = tick(state.value, now.value, durations.value);
@@ -113,6 +140,7 @@ export const useTimer = () => {
             isTestRun.value = false;
         }
         if (result.events.length > 0) {
+            recordFocus(result.events);
             void handleEvents(result.events);
         }
     };
@@ -235,6 +263,7 @@ export const useTimer = () => {
         progress,
         isBreak,
         nextAlertText,
+        todayFocusText,
         isSettingsLocked,
         start: onStart,
         startTest: onStartTest,

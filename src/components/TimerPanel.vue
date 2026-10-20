@@ -8,6 +8,7 @@ const props = defineProps<{
     remainingText: string;
     progress: number;
     isBreak: boolean;
+    todayFocusText: string;
     nextAlertText: string;
 }>();
 
@@ -103,6 +104,10 @@ const canReset = computed(() => props.state.status !== 'IDLE');
             </v-progress-circular>
         </v-btn>
 
+        <div class="text-body-1 text-medium-emphasis">
+            Today {{ props.todayFocusText }}
+        </div>
+
         <div class="d-flex align-center ga-2">
             <v-btn
                 :disabled="!canReset"
@@ -140,8 +145,8 @@ const canReset = computed(() => props.state.status !== 'IDLE');
 }
 
 .timer-action {
-    letter-spacing: 0.5em;
-    margin-right: -0.5em;
+    letter-spacing: 0.15em;
+    margin-right: -0.15em;
 }
 
 .timer-disc {

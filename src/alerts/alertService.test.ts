@@ -11,7 +11,7 @@ import {
 } from './notification';
 
 const event = {
-    phase: 'WORKING', endedAt: 0, 
+    phase: 'WORKING', endedAt: 0, durationMs: 0, 
 } as const;
 
 describe('dispatchAlerts', () => {
@@ -66,13 +66,13 @@ describe('dispatchAlerts', () => {
 describe('playsAlertSound', () => {
     it('plays the sound when focus ends', () => {
         expect(playsAlertSound({
-            phase: 'WORKING', endedAt: 0, 
+            phase: 'WORKING', endedAt: 0, durationMs: 0, 
         })).toBe(true);
     });
 
     it('stays silent when the break ends', () => {
         expect(playsAlertSound({
-            phase: 'BREAK', endedAt: 0, 
+            phase: 'BREAK', endedAt: 0, durationMs: 0, 
         })).toBe(false);
     });
 });

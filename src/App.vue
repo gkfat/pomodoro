@@ -40,6 +40,7 @@ const showNotice = computed({
                 </v-alert>
                 <TimerPanel
                     :is-break="timer.isBreak.value"
+                    :today-focus-text="timer.todayFocusText.value"
                     :next-alert-text="timer.nextAlertText.value"
                     :progress="timer.progress.value"
                     :remaining-text="timer.remainingText.value"
@@ -125,5 +126,13 @@ const showNotice = computed({
     .app-root {
         transition: none;
     }
+}
+</style>
+
+<style>
+/* 全站使用等寬字體：Vuetify 的 body / heading 字體都由這兩個 CSS 變數決定。 */
+:root {
+    --v-font-body: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    --v-font-heading: var(--v-font-body);
 }
 </style>

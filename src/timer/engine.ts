@@ -77,8 +77,11 @@ export const tick = (state: TimerState, now: number, durations: TimerDurations):
             state, events: [], 
         };
     }
+    const phase = state.status as TimerPhase;
     const event = {
-        phase: state.status as TimerPhase, endedAt: now, 
+        phase,
+        endedAt: now,
+        durationMs: phase === 'WORKING' ? durations.workMs : durations.breakMs,
     };
     const next: TimerState = state.status === 'WORKING'
         ? running('BREAK', now + durations.breakMs)

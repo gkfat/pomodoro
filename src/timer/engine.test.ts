@@ -73,11 +73,19 @@ describe('engine tick', () => {
         const result = tick(working, durations.workMs, durations);
         expect(result.events).toEqual([
             {
-                phase: 'WORKING', endedAt: durations.workMs, 
+                phase: 'WORKING', endedAt: durations.workMs, durationMs: durations.workMs, 
             },
         ]);
         expect(result.state.status).toBe('BREAK');
         expect(result.state.endsAt).toBe(durations.workMs + durations.breakMs);
+    });
+
+    it('reports the finished phase duration on each event', () => {
+        const working = unwrap(start(createInitialState(), 0, durations));
+        const workDone = tick(working, durations.workMs, durations);
+        expect(workDone.events[0]?.durationMs).toBe(durations.workMs);
+        const breakDone = tick(workDone.state, workDone.state.endsAt ?? 0, durations);
+        expect(breakDone.events[0]?.durationMs).toBe(durations.breakMs);
     });
 
     it('break starts from the tick time after a long gap', () => {
