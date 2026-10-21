@@ -31,6 +31,12 @@ const action = computed(() => {
             label: 'Resume', hint: 'Resume', event: 'resume', 
         } as const;
     }
+    // 休息中點擊即略過休息：沿用 reset 回到 IDLE，等待使用者開始下一輪。
+    if (isRunning.value && props.isBreak) {
+        return {
+            label: 'Skip', hint: 'Tap to skip', event: 'reset',
+        } as const;
+    }
     if (isRunning.value) {
         return {
             label: 'Pause', hint: 'Tap to pause', event: 'pause', 
@@ -48,6 +54,9 @@ const onAction = (): void => {
         break;
     case 'pause':
         emit('pause');
+        break;
+    case 'reset':
+        emit('reset');
         break;
     case 'start':
         emit('start');
