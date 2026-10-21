@@ -8,7 +8,6 @@ const props = defineProps<{
     remainingText: string;
     progress: number;
     isBreak: boolean;
-    todayFocusText: string;
     nextAlertText: string;
 }>();
 
@@ -112,10 +111,6 @@ const canReset = computed(() => props.state.status !== 'IDLE');
                 </div>
             </v-progress-circular>
         </v-btn>
-
-        <div class="text-body-1 text-medium-emphasis">
-            Today {{ props.todayFocusText }}
-        </div>
 
         <div class="d-flex align-center ga-2">
             <v-btn

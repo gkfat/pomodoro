@@ -3,12 +3,25 @@ import {
     computed, ref, 
 } from 'vue';
 
+import { useDisplay } from 'vuetify';
+
+import CalendarPanel from '@/components/CalendarPanel.vue';
+import DurationSettings from '@/components/DurationSettings.vue';
+import FocusChart from '@/components/FocusChart.vue';
 import SettingsPanel from '@/components/SettingsPanel.vue';
 import TimerPanel from '@/components/TimerPanel.vue';
 import { useTimer } from '@/composables/useTimer';
 
 const timer = useTimer();
 const showSettings = ref(false);
+
+// 小於 sm（xs）時改為底部導覽，一次只顯示一個區塊；較寬時全部並列。
+type MobileTab = 'summary' | 'focus' | 'daily';
+const {
+    xs, mdAndUp, 
+} = useDisplay();
+const mobileTab = ref<MobileTab>('focus');
+const isShown = (tab: MobileTab): boolean => !xs.value || mobileTab.value === tab;
 
 const showNotice = computed({
     get: () => timer.notice.value !== null,
@@ -25,11 +38,23 @@ const showNotice = computed({
         class="app-root"
         :class="timer.isBreak.value ? 'bg-background-break' : 'bg-background'"
     >
+        <v-app-bar
+            color="transparent"
+            density="compact"
+            flat
+        >
+            <v-app-bar-title class="text-h6 font-weight-bold">
+                pomodoro
+            </v-app-bar-title>
+            <v-btn
+                aria-label="Settings"
+                icon="mdi-cog"
+                variant="text"
+                @click="showSettings = true"
+            />
+        </v-app-bar>
         <v-main>
-            <v-container class="d-flex flex-column align-center justify-space-evenly fill-height py-8 app-column">
-                <h1 class="text-h5 font-weight-bold">
-                    pomodoro
-                </h1>
+            <v-container class="d-flex flex-column align-center justify-space-evenly fill-height py-2 app-main">
                 <v-alert
                     v-if="timer.errorMessage.value"
                     closable
@@ -38,29 +63,54 @@ const showNotice = computed({
                 >
                     {{ timer.errorMessage.value }}
                 </v-alert>
-                <TimerPanel
-                    :is-break="timer.isBreak.value"
-                    :today-focus-text="timer.todayFocusText.value"
-                    :next-alert-text="timer.nextAlertText.value"
-                    :progress="timer.progress.value"
-                    :remaining-text="timer.remainingText.value"
-                    :state="timer.state.value"
-                    @pause="timer.pause"
-                    @reset="timer.reset"
-                    @resume="timer.resume"
-                    @start="timer.start"
-                    @start-test="timer.startTest"
-                />
-                <v-btn
-                    aria-label="Settings"
-                    icon="mdi-cog"
-                    size="large"
-                    variant="text"
-                    @click="showSettings = true"
-                />
+                <v-row
+                    class="w-100 flex-grow-1"
+                    no-gutters
+                >
+                    <v-col
+                        v-show="isShown('focus')"
+                        class="d-flex flex-column align-center justify-space-evenly ga-6 px-0 px-md-4 py-4"
+                        cols="12"
+                        md="6"
+                    >
+                        <TimerPanel
+                            :is-break="timer.isBreak.value"
+                            :next-alert-text="timer.nextAlertText.value"
+                            :progress="timer.progress.value"
+                            :remaining-text="timer.remainingText.value"
+                            :state="timer.state.value"
+                            @pause="timer.pause"
+                            @reset="timer.reset"
+                            @resume="timer.resume"
+                            @start="timer.start"
+                            @start-test="timer.startTest"
+                        />
+                        <DurationSettings
+                            :locked="timer.isSettingsLocked.value"
+                            :settings="timer.settings.value"
+                            @update="timer.updateSettings"
+                        />
+                    </v-col>
+                    <v-col
+                        v-show="isShown('summary') || isShown('daily')"
+                        class="d-flex flex-column align-center ga-6 px-0 px-md-4 py-4"
+                        cols="12"
+                        md="6"
+                    >
+                        <CalendarPanel
+                            v-show="isShown('summary')"
+                            :cycles-by-date="timer.focusHistory.value"
+                        />
+                        <FocusChart
+                            v-show="isShown('daily')"
+                            :cycles-by-date="timer.focusHistory.value"
+                        />
+                    </v-col>
+                </v-row>
             </v-container>
 
             <v-dialog
+                v-if="!mdAndUp"
                 v-model="showSettings"
                 fullscreen
                 transition="dialog-bottom-transition"
@@ -108,10 +158,64 @@ const showNotice = computed({
                 </template>
             </v-snackbar>
         </v-main>
+
+        <!-- md 以上：設定改為右側抽屜，關閉鈕在右上角。 -->
+        <v-navigation-drawer
+            v-if="mdAndUp"
+            v-model="showSettings"
+            location="right"
+            temporary
+            width="360"
+        >
+            <div class="d-flex justify-end pa-2">
+                <v-btn
+                    aria-label="Close settings"
+                    icon="mdi-close"
+                    variant="text"
+                    @click="showSettings = false"
+                />
+            </div>
+            <div class="px-6 pb-6">
+                <SettingsPanel
+                    :locked="timer.isSettingsLocked.value"
+                    :notification-support="timer.notificationSupport.value"
+                    :preview-error="timer.previewError.value"
+                    :settings="timer.settings.value"
+                    @preview-sound="timer.previewSound"
+                    @toggle-notification="timer.enableSystemNotification"
+                    @update="timer.updateSettings"
+                />
+            </div>
+        </v-navigation-drawer>
+
+        <v-bottom-navigation
+            v-if="xs"
+            v-model="mobileTab"
+            color="primary"
+            grow
+        >
+            <v-btn value="summary">
+                <v-icon>mdi-calendar-month</v-icon>
+                Summary
+            </v-btn>
+            <v-btn value="focus">
+                <v-icon>mdi-timer-outline</v-icon>
+                Focus
+            </v-btn>
+            <v-btn value="daily">
+                <v-icon>mdi-chart-bar</v-icon>
+                Daily
+            </v-btn>
+        </v-bottom-navigation>
     </v-app>
 </template>
 
 <style scoped>
+/* 主畫面左右兩欄（時鐘／月曆）；窄螢幕自動堆疊成單欄。 */
+.app-main {
+    max-width: 960px;
+}
+
 /* 維持手機直式單欄寬度；Vuetify container 在桌機會撐滿寬度。 */
 .app-column {
     max-width: 420px;

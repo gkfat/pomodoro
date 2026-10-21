@@ -3,7 +3,9 @@ import {
 } from 'vitest';
 
 import { toDateKey } from './date';
-import { formatFocusTotal } from './format';
+import {
+    formatCompactDuration, formatDuration, formatFocusTotal, 
+} from './format';
 import {
     addFocusTime, FOCUS_STORAGE_KEY, loadFocusRecord, 
 } from './storage';
@@ -35,6 +37,33 @@ describe('formatFocusTotal', () => {
         [-5, '0 min'],
     ])('formats %i ms as %s', (ms, expected) => {
         expect(formatFocusTotal(ms)).toBe(expected);
+    });
+});
+
+describe('formatDuration', () => {
+    it.each([
+        [0, '0 sec'],
+        [10_000, '10 sec'],
+        [59_999, '59 sec'],
+        [MIN, '1 min'],
+        [25 * MIN, '25 min'],
+        [85 * MIN, '1 h 25 min'],
+    ])('formats %i ms as %s', (ms, expected) => {
+        expect(formatDuration(ms)).toBe(expected);
+    });
+});
+
+describe('formatCompactDuration', () => {
+    it.each([
+        [0, '0s'],
+        [10_000, '10s'],
+        [59_999, '59s'],
+        [MIN, '1m'],
+        [25 * MIN, '25m'],
+        [60 * MIN, '1h'],
+        [85 * MIN, '1h 25m'],
+    ])('formats %i ms as %s', (ms, expected) => {
+        expect(formatCompactDuration(ms)).toBe(expected);
     });
 });
 

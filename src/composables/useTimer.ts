@@ -14,8 +14,10 @@ import { createSoundPlayer } from '@/alerts/sound';
 import {
     loadSettings, saveSettings, 
 } from '@/settings/storage';
-import { toDateKey } from '@/stats/date';
-import { formatFocusTotal } from '@/stats/format';
+import {
+    addCycle, loadHistory, 
+} from '@/stats/history';
+import type { CyclesByDate } from '@/stats/history';
 import {
     addFocusTime, loadFocusRecord, 
 } from '@/stats/storage';
@@ -49,10 +51,13 @@ export const useTimer = () => {
     const notice = ref<string | null>(null);
     const previewError = ref<string | null>(null);
     const focusRecord = shallowRef(loadFocusRecord(localStorage, Date.now()));
+    const focusHistory = shallowRef<CyclesByDate>(loadHistory(localStorage));
     const errorMessage = ref<string | null>(null);
     const notificationSupport = ref<NotificationSupport>(getNotificationSupport());
 
     const sound = createSoundPlayer();
+    // 本輪專注按下開始的實際時間（暫停後繼續不變）；reset 或專注結束後清除。
+    let workStartedAt: number | null = null;
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const durations = computed<TimerDurations>(() => (isTestRun.value
@@ -74,10 +79,6 @@ export const useTimer = () => {
     });
     // PAUSED 沿用暫停前的階段；其餘非休息狀態一律視為專注。
     const isBreak = computed(() => getPhase(state.value) === 'BREAK');
-    // 日期鍵隨 now 重新計算：頁面開著過午夜，今日總計即時歸零。
-    const todayFocusText = computed(() => formatFocusTotal(
-        focusRecord.value.date === toDateKey(now.value) ? focusRecord.value.totalMs : 0,
-    ));
     const nextAlertText = computed(() => {
         const at = getNextAlertAt(state.value);
         return at === null ? '—' : formatClock(at);
@@ -114,20 +115,30 @@ export const useTimer = () => {
         }
     };
 
-    // 只累計完整完成的專注；10-sec test 不計入。
+    // 完整完成的專注：10-sec test 只計入圖表的輪數，不計入今日總時間。
     const recordFocus = (events: PhaseEndedEvent[]): void => {
-        if (isTestRun.value) {
-            return;
-        }
         for (const event of events) {
             if (event.phase !== 'WORKING') {
                 continue;
             }
-            const result = addFocusTime(localStorage, focusRecord.value, event.endedAt, event.durationMs);
-            focusRecord.value = result.record;
-            if (result.error !== null) {
-                errorMessage.value = result.error;
+            if (!isTestRun.value) {
+                const result = addFocusTime(localStorage, focusRecord.value, event.endedAt, event.durationMs);
+                focusRecord.value = result.record;
+                if (result.error !== null) {
+                    errorMessage.value = result.error;
+                }
             }
+            const cycle = addCycle(localStorage, focusHistory.value, {
+                // 沒有記錄到開始時間（理論上不會發生）時，以時長回推。
+                startedAt: workStartedAt ?? event.endedAt - event.durationMs,
+                endedAt: event.endedAt,
+                durationMs: event.durationMs,
+            });
+            focusHistory.value = cycle.history;
+            if (cycle.error !== null) {
+                errorMessage.value = cycle.error;
+            }
+            workStartedAt = null;
         }
     };
 
@@ -157,6 +168,15 @@ export const useTimer = () => {
         state.value = result.state;
     };
 
+    // 從 IDLE 開始新一輪專注時，記下實際開始時間。
+    const startWork = (): void => {
+        const fromIdle = state.value.status === 'IDLE';
+        apply((at) => start(state.value, at, durations.value));
+        if (fromIdle && state.value.status === 'WORKING') {
+            workStartedAt = now.value;
+        }
+    };
+
     const onStart = (): void => {
         sound.unlock();
         sound.preload(settings.value.alertSound);
@@ -164,7 +184,7 @@ export const useTimer = () => {
         if (state.value.status === 'IDLE') {
             isTestRun.value = false;
         }
-        apply((at) => start(state.value, at, durations.value));
+        startWork();
     };
     const onStartTest = (): void => {
         if (state.value.status !== 'IDLE') {
@@ -173,12 +193,13 @@ export const useTimer = () => {
         isTestRun.value = true;
         sound.unlock();
         sound.preload(settings.value.alertSound);
-        apply((at) => start(state.value, at, durations.value));
+        startWork();
     };
     const onPause = (): void => apply((at) => pause(state.value, at));
     const onResume = (): void => apply((at) => resume(state.value, at));
     const onReset = (): void => {
         isTestRun.value = false;
+        workStartedAt = null;
         apply(() => reset());
     };
 
@@ -263,7 +284,7 @@ export const useTimer = () => {
         progress,
         isBreak,
         nextAlertText,
-        todayFocusText,
+        focusHistory,
         isSettingsLocked,
         start: onStart,
         startTest: onStartTest,
