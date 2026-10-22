@@ -1,5 +1,5 @@
 import {
-    computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect,
+    computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect,
 } from 'vue';
 
 import {
@@ -26,8 +26,11 @@ import {
     APP_TITLE, formatClock, formatDocumentTitle, formatRemaining, getNextAlertAt, getPhase, getRemainingMs,
 } from '@/timer/display';
 import {
-    createInitialState, pause, reset, resume, start, tick,
+    pause, reset, resume, start, tick,
 } from '@/timer/engine';
+import {
+    loadTimerSession, saveTimerSession,
+} from '@/timer/storage';
 import type {
     PhaseEndedEvent, TimerDurations, TimerState, TransitionResult,
 } from '@/timer/types';
@@ -44,10 +47,12 @@ const ENDED_MESSAGE = {
 
 export const useTimer = () => {
     const settings = ref<Settings>(loadSettings(localStorage));
-    const state = shallowRef<TimerState>(createInitialState());
+    // 重新整理後還原進行中的計時；已過期的階段由第一次 tick 照常結算。
+    const restored = loadTimerSession(localStorage);
+    const state = shallowRef<TimerState>(restored.state);
     const now = ref(Date.now());
     // 測試模式：工作與休息皆縮為 10 秒，不改動已儲存的設定。
-    const isTestRun = ref(false);
+    const isTestRun = ref(restored.isTestRun);
     const notice = ref<string | null>(null);
     const previewError = ref<string | null>(null);
     const focusRecord = shallowRef(loadFocusRecord(localStorage, Date.now()));
@@ -57,7 +62,7 @@ export const useTimer = () => {
 
     const sound = createSoundPlayer();
     // 本輪專注按下開始的實際時間（暫停後繼續不變）；reset 或專注結束後清除。
-    let workStartedAt: number | null = null;
+    let workStartedAt: number | null = restored.workStartedAt;
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const durations = computed<TimerDurations>(() => (isTestRun.value
@@ -254,6 +259,11 @@ export const useTimer = () => {
             runTick();
         }
     };
+
+    // 狀態或測試模式改變時持久化；同一個同步區段內的 workStartedAt 變更會一併寫入。
+    watch([state, isTestRun], () => saveTimerSession(localStorage, {
+        state: state.value, isTestRun: isTestRun.value, workStartedAt,
+    }));
 
     // 分頁標題跟著倒數，切到其他分頁也看得到剩餘時間。
     watchEffect(() => {
