@@ -61,7 +61,7 @@ describe('formatCompactDuration', () => {
         [MIN, '1m'],
         [25 * MIN, '25m'],
         [60 * MIN, '1h'],
-        [85 * MIN, '1h 25m'],
+        [85 * MIN, '1h25m'],
     ])('formats %i ms as %s', (ms, expected) => {
         expect(formatCompactDuration(ms)).toBe(expected);
     });

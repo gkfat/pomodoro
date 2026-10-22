@@ -4,7 +4,7 @@ import {
 } from 'vue';
 
 import { toDateKey } from '@/stats/date';
-import { formatDuration } from '@/stats/format';
+import { formatCompactDuration } from '@/stats/format';
 import { sumDurationMs } from '@/stats/history';
 import type { CyclesByDate } from '@/stats/history';
 import { formatClock } from '@/timer/display';
@@ -145,7 +145,7 @@ const shiftWindow = (delta: number): void => {
                         {{ entry.label }}
                     </div>
                     <div class="text-caption font-weight-bold text-truncate w-100 text-center">
-                        {{ entry.totalMs > 0 ? formatDuration(entry.totalMs) : '' }}
+                        {{ entry.totalMs > 0 ? formatCompactDuration(entry.totalMs) : '' }}
                     </div>
                 </div>
             </v-col>

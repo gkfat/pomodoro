@@ -21,7 +21,7 @@ export const formatDuration = (ms: number): string => {
     return formatFocusTotal(safeMs);
 };
 
-// 月曆格內的精簡時長：10s、25m、1h、1h 25m。
+// 月曆格內的精簡時長：10s、25m、1h、1h25m。
 export const formatCompactDuration = (ms: number): string => {
     const safeMs = Math.max(0, ms);
     if (safeMs < MS_PER_MINUTE) {
@@ -33,5 +33,5 @@ export const formatCompactDuration = (ms: number): string => {
     if (hours === 0) {
         return `${minutes}m`;
     }
-    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+    return minutes === 0 ? `${hours}h` : `${hours}h${minutes}m`;
 };
