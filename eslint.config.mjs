@@ -88,7 +88,16 @@ export default [
         rules: { indent: ['error', 4] },
     },
 
-    { languageOptions: { globals: { ...globals.browser } } },
+    {
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                // vite.config.ts 的 define 於 build 時注入。
+                __APP_COMMIT__: 'readonly',
+                __APP_BUILD_DATE__: 'readonly',
+            },
+        },
+    },
     {
         files: ['*.config.{ts,mjs}'],
         languageOptions: { globals: { ...globals.node } },

@@ -8,6 +8,7 @@ import { useDisplay } from 'vuetify';
 import CalendarPanel from '@/components/CalendarPanel.vue';
 import DurationSettings from '@/components/DurationSettings.vue';
 import FocusChart from '@/components/FocusChart.vue';
+import AppVersion from '@/components/AppVersion.vue';
 import SettingsPanel from '@/components/SettingsPanel.vue';
 import TimerPanel from '@/components/TimerPanel.vue';
 import { useTimer } from '@/composables/useTimer';
@@ -133,6 +134,7 @@ const showNotice = computed({
                         />
                     </v-container>
                     <v-spacer />
+                    <AppVersion class="mb-4" />
                     <div class="d-flex justify-center pb-8">
                         <v-btn
                             aria-label="Close settings"
@@ -186,6 +188,9 @@ const showNotice = computed({
                     @update="timer.updateSettings"
                 />
             </div>
+            <template #append>
+                <AppVersion class="pa-4" />
+            </template>
         </v-navigation-drawer>
 
         <v-bottom-navigation
