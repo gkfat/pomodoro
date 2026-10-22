@@ -58,7 +58,7 @@ const cellColor = (column: number): string => (isWeekend(column) ? 'surface-vari
 
 <template>
     <div
-        class="calendar-panel d-flex flex-column flex-grow-1 w-100"
+        class="calendar-panel d-flex flex-column flex-grow-0 w-100"
     >
         <div class="d-flex align-center justify-space-between mb-2">
             <v-btn
@@ -100,7 +100,7 @@ const cellColor = (column: number): string => (isWeekend(column) ? 'surface-vari
         <v-row
             v-for="(week, weekIndex) in weeks"
             :key="weekIndex"
-            class="ga-1 mb-1 flex-nowrap flex-grow-1"
+            class="ga-1 mb-1 flex-nowrap flex-grow-0"
             no-gutters
         >
             <v-col

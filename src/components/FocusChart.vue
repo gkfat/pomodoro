@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const VISIBLE_DAYS = 5;
-const PLOT_MIN_HEIGHT = 120;
+const PLOT_MIN_HEIGHT = 240;
 const FOOTER_HEIGHT = 44;
 // 專注很短（如 10-sec test）時，方塊仍至少有這個高度才看得見。
 const MIN_BLOCK_HEIGHT = 3;
