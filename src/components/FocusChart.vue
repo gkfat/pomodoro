@@ -3,6 +3,7 @@ import {
     computed, ref, 
 } from 'vue';
 
+import { useClock } from '@/clock/clock';
 import { toDateKey } from '@/stats/date';
 import { formatCompactDuration } from '@/stats/format';
 import { sumDurationMs } from '@/stats/history';
@@ -23,7 +24,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // 縱軸每小時一條分隔線；標籤每 3 小時標一次，避免擠在一起。
 const LABEL_EVERY_HOURS = 3;
 
-const today = new Date();
+const { today } = useClock();
 // 視窗最後一天往前推幾天；0 代表最後一天是今日（不可再往後）。
 const daysBack = ref(0);
 
@@ -31,7 +32,7 @@ const percent = (ms: number): number => (Math.min(MS_PER_DAY, Math.max(0, ms)) /
 
 const days = computed(() => Array.from({ length: VISIBLE_DAYS }, (_, index) => {
     const date = new Date(
-        today.getFullYear(), today.getMonth(), today.getDate() - daysBack.value - (VISIBLE_DAYS - 1 - index),
+        today.value.getFullYear(), today.value.getMonth(), today.value.getDate() - daysBack.value - (VISIBLE_DAYS - 1 - index),
     );
     const dayStart = date.getTime();
     const sessions = props.cyclesByDate[toDateKey(dayStart)] ?? [];

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import {
-    computed, ref, 
+    computed, ref, watch, 
 } from 'vue';
 
+import { useClock } from '@/clock/clock';
 import { buildMonthGrid } from '@/stats/calendar';
 import { toDateKey } from '@/stats/date';
 import { formatCompactDuration } from '@/stats/format';
@@ -23,9 +24,19 @@ const props = defineProps<{
     cyclesByDate: CyclesByDate;
 }>();
 
-const today = new Date();
-const viewYear = ref(today.getFullYear());
-const viewMonth = ref(today.getMonth());
+const { today } = useClock();
+const viewYear = ref(today.value.getFullYear());
+const viewMonth = ref(today.value.getMonth());
+
+// 跨日後若原本停在「今天所在的月份」，跟著切到新的當月；瀏覽其他月份時不干擾。
+watch(today, (next, previous) => {
+    const followsToday = viewYear.value === previous.getFullYear() && viewMonth.value === previous.getMonth();
+    if (!followsToday) {
+        return;
+    }
+    viewYear.value = next.getFullYear();
+    viewMonth.value = next.getMonth();
+});
 
 const weeks = computed(() => buildMonthGrid(viewYear.value, viewMonth.value));
 
@@ -47,9 +58,9 @@ const dayTotalMs = (day: number): number => {
 };
 
 const isToday = (day: number): boolean =>
-    viewYear.value === today.getFullYear()
-    && viewMonth.value === today.getMonth()
-    && day === today.getDate();
+    viewYear.value === today.value.getFullYear()
+    && viewMonth.value === today.value.getMonth()
+    && day === today.value.getDate();
 
 // 週日(0)與週六(6)整欄改用較淡的 surface-variant；平日用 surface。
 const isWeekend = (column: number): boolean => column === 0 || column === 6;

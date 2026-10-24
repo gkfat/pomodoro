@@ -11,6 +11,7 @@ import {
 } from '@/alerts/notification';
 import type { NotificationSupport } from '@/alerts/notification';
 import { createSoundPlayer } from '@/alerts/sound';
+import { refreshClock } from '@/clock/clock';
 import {
     loadSettings, saveSettings, 
 } from '@/settings/storage';
@@ -50,7 +51,7 @@ export const useTimer = () => {
     // 重新整理後還原進行中的計時；已過期的階段由第一次 tick 照常結算。
     const restored = loadTimerSession(localStorage);
     const state = shallowRef<TimerState>(restored.state);
-    const now = ref(Date.now());
+    const now = ref(refreshClock());
     // 測試模式：工作與休息皆縮為 10 秒，不改動已儲存的設定。
     const isTestRun = ref(restored.isTestRun);
     const notice = ref<string | null>(null);
@@ -148,7 +149,7 @@ export const useTimer = () => {
     };
 
     const runTick = (): void => {
-        now.value = Date.now();
+        now.value = refreshClock();
         const result = tick(state.value, now.value, durations.value);
         state.value = result.state;
         // 一輪結束後回到設定的時長，測試用的 10 秒不再沿用。
@@ -162,7 +163,7 @@ export const useTimer = () => {
     };
 
     const apply = (transition: (at: number) => TransitionResult): void => {
-        now.value = Date.now();
+        now.value = refreshClock();
         const result = transition(now.value);
         if (!result.ok) {
             errorMessage.value = result.error;
