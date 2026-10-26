@@ -9,6 +9,8 @@ const props = defineProps<{
     progress: number;
     isBreak: boolean;
     nextAlertText: string;
+    // md 以上縮小圓盤，讓下方能放得下月曆。
+    compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +65,9 @@ const onAction = (): void => {
     }
 };
 
+const discSize = computed(() => (props.compact ? 220 : 320));
+const ringSize = computed(() => discSize.value - 24);
+
 const ringColor = computed(() => (props.isBreak ? 'success' : 'primary'));
 
 // 10 秒測試只在開發環境提供，方便驗證提醒流程。
@@ -77,19 +82,19 @@ const canReset = computed(() => props.state.status !== 'IDLE');
             class="timer-disc"
             color="surface"
             :aria-label="action.label"
-            height="320"
+            :height="discSize"
             :ripple="false"
             rounded="circle"
             variant="flat"
-            width="320"
+            :width="discSize"
             @click="onAction"
         >
             <v-progress-circular
                 class="timer-ring"
                 :color="ringColor"
                 :model-value="props.progress"
-                :size="296"
-                :width="9"
+                :size="ringSize"
+                :width="props.compact ? 7 : 9"
                 bg-color="surface-variant"
                 rounded
             >
@@ -102,7 +107,10 @@ const canReset = computed(() => props.state.status !== 'IDLE');
                     >
                         Stop at {{ props.nextAlertText }}
                     </div>
-                    <div class="font-weight-black timer-digits">
+                    <div
+                        class="font-weight-black timer-digits"
+                        :class="{ 'timer-digits--compact': props.compact }"
+                    >
                         {{ props.remainingText }}
                     </div>
                     <div class="text-subtitle-1 font-weight-bold mt-2 timer-action">
@@ -119,10 +127,10 @@ const canReset = computed(() => props.state.status !== 'IDLE');
                 variant="text"
                 @click="emit('reset')"
             >
-                Restart
+                Reset
             </v-btn>
             <v-btn
-                v-if="showTestButton"
+                v-if="showTestButton && canStartTest"
                 :disabled="!canStartTest"
                 prepend-icon="mdi-flask-outline"
                 variant="text"
@@ -146,6 +154,10 @@ const canReset = computed(() => props.state.status !== 'IDLE');
     font-variant-numeric: tabular-nums;
     /* 環的 color 會被內容繼承，這裡改回主文字色，只讓弧線帶階段色。 */
     color: rgb(var(--v-theme-on-surface));
+}
+
+.timer-digits--compact {
+    font-size: 2.75rem;
 }
 
 .timer-action {

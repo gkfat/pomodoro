@@ -22,6 +22,8 @@ const WEEKDAYS = [
 
 const props = defineProps<{
     cyclesByDate: CyclesByDate;
+    // md 以上：格子縮成單行，有專注的日子改以底色標示，時長移到 tooltip。
+    compact?: boolean;
 }>();
 
 const { today } = useClock();
@@ -62,27 +64,53 @@ const isToday = (day: number): boolean =>
     && viewMonth.value === today.value.getMonth()
     && day === today.value.getDate();
 
+const hasFocus = (day: number | null): boolean => day !== null && dayTotalMs(day) > 0;
+
 // 週日(0)與週六(6)整欄改用較淡的 surface-variant；平日用 surface。
 const isWeekend = (column: number): boolean => column === 0 || column === 6;
 const cellColor = (column: number): string => (isWeekend(column) ? 'surface-variant' : 'surface');
+
+// compact 時有專注的日子整格改為主色（淡粉）。
+const dayColor = (day: number | null, column: number): string | undefined => {
+    if (day === null) {
+        return undefined;
+    }
+    return props.compact && hasFocus(day) ? 'primary' : cellColor(column);
+};
+
+// 今日框線與主色底色同色會看不見，專注日改用文字色。
+const todayBorder = (day: number | null): string | false => {
+    if (day === null || !isToday(day)) {
+        return false;
+    }
+    return props.compact && hasFocus(day) ? 'on-surface md' : 'primary md';
+};
 </script>
 
 <template>
     <div
         class="calendar-panel d-flex flex-column flex-grow-0 w-100"
     >
-        <div class="d-flex align-center justify-space-between mb-2">
+        <div
+            class="d-flex align-center justify-space-between"
+            :class="props.compact ? 'mb-1' : 'mb-2'"
+        >
             <v-btn
                 aria-label="Previous month"
+                :density="props.compact ? 'compact' : 'default'"
                 icon="mdi-chevron-left"
                 variant="text"
                 @click="shiftMonth(-1)"
             />
-            <div class="text-subtitle-1 font-weight-bold">
+            <div
+                class="font-weight-bold"
+                :class="props.compact ? 'text-body-2' : 'text-subtitle-1'"
+            >
                 {{ title }}
             </div>
             <v-btn
                 aria-label="Next month"
+                :density="props.compact ? 'compact' : 'default'"
                 icon="mdi-chevron-right"
                 variant="text"
                 @click="shiftMonth(1)"
@@ -100,7 +128,7 @@ const cellColor = (column: number): string => (isWeekend(column) ? 'surface-vari
                 <v-sheet
                     class="d-flex align-center justify-center text-caption text-medium-emphasis"
                     :color="cellColor(column)"
-                    height="28"
+                    :height="props.compact ? 20 : 28"
                     rounded
                 >
                     {{ name }}
@@ -120,18 +148,25 @@ const cellColor = (column: number): string => (isWeekend(column) ? 'surface-vari
                 class="d-flex overflow-hidden"
             >
                 <v-sheet
-                    class="d-flex flex-column flex-grow-1 align-center justify-start pt-1 text-body-2"
-                    :border="day !== null && isToday(day) ? 'primary md' : false"
-                    :class="{
-                        'font-weight-bold border-opacity-100': day !== null && isToday(day),
-                    }"
-                    :color="day === null ? undefined : cellColor(column)"
-                    min-height="48"
+                    class="d-flex flex-column flex-grow-1 align-center"
+                    :border="todayBorder(day)"
+                    :class="[
+                        props.compact ? 'justify-center text-caption' : 'justify-start pt-1 text-body-2',
+                        { 'font-weight-bold border-opacity-100': day !== null && isToday(day) },
+                    ]"
+                    :color="dayColor(day, column)"
+                    :min-height="props.compact ? 24 : 48"
                     rounded
                 >
                     <span>{{ day }}</span>
+                    <v-tooltip
+                        v-if="props.compact && day !== null && hasFocus(day)"
+                        activator="parent"
+                        location="top"
+                        :text="formatCompactDuration(dayTotalMs(day))"
+                    />
                     <span
-                        v-if="day !== null && dayTotalMs(day) > 0"
+                        v-else-if="!props.compact && day !== null && hasFocus(day)"
                         class="text-caption text-primary text-truncate w-100 text-center px-1"
                     >
                         {{ formatCompactDuration(dayTotalMs(day)) }}

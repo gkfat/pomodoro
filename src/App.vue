@@ -15,6 +15,8 @@ import { useTimer } from '@/composables/useTimer';
 
 const timer = useTimer();
 const showSettings = ref(false);
+// 計時開始後（專注、休息、暫停）進入專注模式：只留時鐘，其餘區塊與 header 全部隱藏。
+const isFocusMode = computed(() => timer.state.value.status !== 'IDLE');
 
 // 小於 sm（xs）時改為底部導覽，一次只顯示一個區塊；較寬時全部並列。
 type MobileTab = 'summary' | 'focus' | 'daily';
@@ -40,6 +42,7 @@ const showNotice = computed({
         :class="timer.isBreak.value ? 'bg-background-break' : 'bg-background'"
     >
         <v-app-bar
+            v-if="!isFocusMode"
             color="transparent"
             density="compact"
             flat
@@ -68,42 +71,50 @@ const showNotice = computed({
                     class="w-100 flex-grow-1"
                     no-gutters
                 >
+                    <!-- 左欄：月曆在上、計時器在下；右欄：daily 佔滿全高。 -->
                     <v-col
-                        v-show="isShown('focus')"
-                        class="d-flex flex-column align-center justify-space-evenly ga-6 px-0 px-md-4 py-4"
+                        v-show="isFocusMode || isShown('focus') || isShown('summary')"
+                        class="d-flex flex-column align-center justify-space-evenly ga-8 px-0 px-md-4 py-4"
                         cols="12"
-                        md="6"
-                    >
-                        <TimerPanel
-                            :is-break="timer.isBreak.value"
-                            :next-alert-text="timer.nextAlertText.value"
-                            :progress="timer.progress.value"
-                            :remaining-text="timer.remainingText.value"
-                            :state="timer.state.value"
-                            @pause="timer.pause"
-                            @reset="timer.reset"
-                            @resume="timer.resume"
-                            @start="timer.start"
-                            @start-test="timer.startTest"
-                        />
-                        <DurationSettings
-                            :locked="timer.isSettingsLocked.value"
-                            :settings="timer.settings.value"
-                            @update="timer.updateSettings"
-                        />
-                    </v-col>
-                    <v-col
-                        v-show="isShown('summary') || isShown('daily')"
-                        class="d-flex flex-column align-center ga-6 px-0 px-md-4 py-4"
-                        cols="12"
-                        md="6"
+                        :md="isFocusMode ? 12 : 6"
                     >
                         <CalendarPanel
-                            v-show="isShown('summary')"
+                            v-show="!isFocusMode && isShown('summary')"
+                            :compact="mdAndUp"
                             :cycles-by-date="timer.focusHistory.value"
                         />
+                        <div
+                            v-show="isFocusMode || isShown('focus')"
+                            class="d-flex flex-column align-center justify-space-evenly flex-grow-1 ga-6 w-100"
+                        >
+                            <TimerPanel
+                                :compact="mdAndUp && !isFocusMode"
+                                :is-break="timer.isBreak.value"
+                                :next-alert-text="timer.nextAlertText.value"
+                                :progress="timer.progress.value"
+                                :remaining-text="timer.remainingText.value"
+                                :state="timer.state.value"
+                                @pause="timer.pause"
+                                @reset="timer.reset"
+                                @resume="timer.resume"
+                                @start="timer.start"
+                                @start-test="timer.startTest"
+                            />
+                            <DurationSettings
+                                v-if="!isFocusMode"
+                                :locked="timer.isSettingsLocked.value"
+                                :settings="timer.settings.value"
+                                @update="timer.updateSettings"
+                            />
+                        </div>
+                    </v-col>
+                    <v-col
+                        v-show="!isFocusMode && isShown('daily')"
+                        class="d-flex flex-column align-center px-0 px-md-4 py-4"
+                        cols="12"
+                        md="6"
+                    >
                         <FocusChart
-                            v-show="isShown('daily')"
                             :cycles-by-date="timer.focusHistory.value"
                         />
                     </v-col>
@@ -194,7 +205,7 @@ const showNotice = computed({
         </v-navigation-drawer>
 
         <v-bottom-navigation
-            v-if="xs"
+            v-if="xs && !isFocusMode"
             v-model="mobileTab"
             color="primary"
             grow
