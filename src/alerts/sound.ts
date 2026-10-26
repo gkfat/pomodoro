@@ -7,11 +7,16 @@ const BEEP_COUNT = 3;
 const BEEP_GAP_SECONDS = 0.55;
 // 一律以最大音量播放（Web Audio 增益上限 1，不放大以免失真）；不修改使用者的系統或喇叭音量。
 const PLAYBACK_GAIN = 1;
+// 開始專注的提示：兩個短促的上行音，音量比結束提示輕。
+const START_CUE_FREQUENCIES_HZ = [660, 880] as const;
+const START_CUE_NOTE_SECONDS = 0.1;
+const START_CUE_GAIN = 0.4;
 
 export type SoundPlayer = {
     unlock: () => void;
     preload: (id: AlertSoundId) => void;
     play: (id: AlertSoundId) => Promise<void>;
+    playStart: () => Promise<void>;
 };
 
 // 提示音播放器。AudioContext 需在使用者互動後 resume（autoplay 政策）。
@@ -82,6 +87,19 @@ export const createSoundPlayer = (): SoundPlayer => {
         source.start();
     };
 
+    const playStartCue = (audio: AudioContext): void => {
+        START_CUE_FREQUENCIES_HZ.forEach((frequency, index) => {
+            const startAt = audio.currentTime + index * START_CUE_NOTE_SECONDS;
+            const oscillator = audio.createOscillator();
+            const gain = audio.createGain();
+            oscillator.frequency.value = frequency;
+            gain.gain.value = START_CUE_GAIN;
+            oscillator.connect(gain).connect(audio.destination);
+            oscillator.start(startAt);
+            oscillator.stop(startAt + START_CUE_NOTE_SECONDS);
+        });
+    };
+
     const unlock = (): void => {
         try {
             void getContext().resume();
@@ -113,7 +131,11 @@ export const createSoundPlayer = (): SoundPlayer => {
         }
     };
 
+    const playStart = async (): Promise<void> => {
+        playStartCue(await getRunningContext());
+    };
+
     return {
-        unlock, preload, play, 
+        unlock, preload, play, playStart, 
     };
 };

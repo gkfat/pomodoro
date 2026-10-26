@@ -180,6 +180,9 @@ export const useTimer = () => {
         apply((at) => start(state.value, at, durations.value));
         if (fromIdle && state.value.status === 'WORKING') {
             workStartedAt = now.value;
+            sound.playStart().catch((error: unknown) => {
+                console.warn('[alerts] 開始提示音播放失敗', error);
+            });
         }
     };
 

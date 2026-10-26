@@ -96,6 +96,17 @@ describe('createSoundPlayer', () => {
         expect(context.createOscillator).toHaveBeenCalledTimes(3);
     });
 
+    it('plays a short two-note start cue without fetching', async () => {
+        await createSoundPlayer().playStart();
+        expect(fetch).not.toHaveBeenCalled();
+        expect(context.createOscillator).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects the start cue when audio is not allowed to run', async () => {
+        context.state = 'suspended';
+        await expect(createSoundPlayer().playStart()).rejects.toThrow('not allowed');
+    });
+
     it('plays a decoded audio file for a generated sound', async () => {
         await createSoundPlayer().play('marimba');
         expect(fetch).toHaveBeenCalledOnce();
