@@ -80,6 +80,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
     <div class="timer-panel">
         <v-btn
             class="timer-disc"
+            :class="isBreak ? 'timer-disc--break' : 'timer-disc--focus'"
             color="surface"
             :aria-label="action.label"
             :height="discSize"
@@ -102,7 +103,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
                     <!-- 下一次提醒只在進行中顯示；其餘狀態保留版面高度，避免倒數數字上下位移 -->
                     <div
                         :aria-hidden="!isRunning"
-                        class="text-caption text-medium-emphasis mb-2"
+                        class="text-body-small text-medium-emphasis mb-2"
                         :class="{ 'opacity-0': !isRunning }"
                     >
                         Stop at {{ props.nextAlertText }}
@@ -113,7 +114,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
                     >
                         {{ props.remainingText }}
                     </div>
-                    <div class="text-subtitle-1 font-weight-bold mt-2 timer-action">
+                    <div class="text-title-medium font-weight-bold mt-2 timer-action">
                         {{ action.hint }}
                     </div>
                 </div>
@@ -123,6 +124,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
         <div class="d-flex align-center ga-2">
             <v-btn
                 :disabled="!canReset"
+                :ripple="false"
                 prepend-icon="mdi-restart"
                 variant="text"
                 @click="emit('reset')"
@@ -131,6 +133,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
             </v-btn>
             <v-btn
                 v-if="showTestButton && canStartTest"
+                :ripple="false"
                 :disabled="!canStartTest"
                 prepend-icon="mdi-flask-outline"
                 variant="text"
@@ -143,7 +146,7 @@ const canReset = computed(() => props.state.status !== 'IDLE');
 </template>
 
 <style scoped>
-/* Vuetify utility class 無法表達：display: contents 讓子元素直接參與父層 space-evenly 的等距分配、數字尺寸與等寬、字距、圓盤陰影、環形弧線過渡。 */
+/* Vuetify utility class 無法表達：display: contents 讓子元素直接參與父層 space-evenly 的等距分配、數字尺寸與等寬、字距、環形弧線過渡。 */
 .timer-panel {
     display: contents;
 }
@@ -165,8 +168,18 @@ const canReset = computed(() => props.state.status !== 'IDLE');
     margin-right: -0.15em;
 }
 
+.timer-disc--focus {
+    --timer-glow: var(--v-theme-primary);
+}
+
+.timer-disc--break {
+    --timer-glow: var(--v-theme-success);
+}
+
+/* 光暈直接從圓盤邊緣向外擴散（偏移 0、不留間隙），顏色跟著階段色。 */
 .timer-disc {
-    box-shadow: 0 0 0 18px rgb(var(--v-theme-surface-variant), 0.35), 0 24px 60px rgb(0, 0, 0, 0.35);
+    box-shadow: 0 0 20px 2px rgb(var(--timer-glow), 0.45);
+    transition: box-shadow 0.4s ease;
 }
 
 .timer-ring :deep(.v-progress-circular__overlay) {

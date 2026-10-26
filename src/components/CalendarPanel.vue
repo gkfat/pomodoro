@@ -104,7 +104,7 @@ const todayBorder = (day: number | null): string | false => {
             />
             <div
                 class="font-weight-bold"
-                :class="props.compact ? 'text-body-2' : 'text-subtitle-1'"
+                :class="props.compact ? 'text-body-medium' : 'text-title-medium'"
             >
                 {{ title }}
             </div>
@@ -126,7 +126,8 @@ const todayBorder = (day: number | null): string | false => {
                 :key="name"
             >
                 <v-sheet
-                    class="d-flex align-center justify-center text-caption text-medium-emphasis"
+                    class="d-flex align-center justify-center text-medium-emphasis"
+                    :class="props.compact ? 'text-label-small' : 'text-body-small'"
                     :color="cellColor(column)"
                     :height="props.compact ? 20 : 28"
                     rounded
@@ -151,7 +152,7 @@ const todayBorder = (day: number | null): string | false => {
                     class="d-flex flex-column flex-grow-1 align-center"
                     :border="todayBorder(day)"
                     :class="[
-                        props.compact ? 'justify-center text-caption' : 'justify-start pt-1 text-body-2',
+                        props.compact ? 'justify-center text-body-small' : 'justify-start pt-1 text-body-medium',
                         { 'font-weight-bold border-opacity-100': day !== null && isToday(day) },
                     ]"
                     :color="dayColor(day, column)"
@@ -167,7 +168,7 @@ const todayBorder = (day: number | null): string | false => {
                     />
                     <span
                         v-else-if="!props.compact && day !== null && hasFocus(day)"
-                        class="text-caption text-primary text-truncate w-100 text-center px-1"
+                        class="text-body-small text-primary text-truncate w-100 text-center px-1"
                     >
                         {{ formatCompactDuration(dayTotalMs(day)) }}
                     </span>

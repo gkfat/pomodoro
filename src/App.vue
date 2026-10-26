@@ -11,12 +11,27 @@ import FocusChart from '@/components/FocusChart.vue';
 import AppVersion from '@/components/AppVersion.vue';
 import SettingsPanel from '@/components/SettingsPanel.vue';
 import TimerPanel from '@/components/TimerPanel.vue';
+import { useClock } from '@/clock/clock';
 import { useTimer } from '@/composables/useTimer';
+import { toDateKey } from '@/stats/date';
 
 const timer = useTimer();
 const showSettings = ref(false);
 // 計時開始後（專注、休息、暫停）進入專注模式：只留時鐘，其餘區塊與 header 全部隱藏。
 const isFocusMode = computed(() => timer.state.value.status !== 'IDLE');
+// 專注倒數進行中（不含暫停、休息）才讓背景呼吸。
+const isBreathing = computed(() => timer.state.value.status === 'WORKING');
+const rootClass = computed(() => {
+    if (isBreathing.value) {
+        return 'app-breathing';
+    }
+    return timer.isBreak.value ? 'bg-background-break' : 'bg-background';
+});
+
+// 目前這一輪是今日第幾次：今日已完成的輪數 + 進行中的這一輪。
+const { todayStart } = useClock();
+const todayRound = computed(() =>
+    (timer.focusHistory.value[toDateKey(todayStart.value)]?.length ?? 0) + 1);
 
 // 小於 sm（xs）時改為底部導覽，一次只顯示一個區塊；較寬時全部並列。
 type MobileTab = 'summary' | 'focus' | 'daily';
@@ -39,7 +54,7 @@ const showNotice = computed({
 <template>
     <v-app
         class="app-root"
-        :class="timer.isBreak.value ? 'bg-background-break' : 'bg-background'"
+        :class="rootClass"
     >
         <v-app-bar
             v-if="!isFocusMode"
@@ -47,7 +62,7 @@ const showNotice = computed({
             density="compact"
             flat
         >
-            <v-app-bar-title class="text-h6 font-weight-bold">
+            <v-app-bar-title class="text-title-large font-weight-bold">
                 pomodoro
             </v-app-bar-title>
             <v-btn
@@ -87,6 +102,19 @@ const showNotice = computed({
                             v-show="isFocusMode || isShown('focus')"
                             class="d-flex flex-column align-center justify-space-evenly flex-grow-1 ga-6 w-100"
                         >
+                            <!-- 專注模式的狀態標示；休息時保留高度但隱藏，避免時鐘位移。 -->
+                            <div
+                                v-if="isFocusMode"
+                                class="d-flex flex-column align-center"
+                                :class="{ 'opacity-0': timer.isBreak.value }"
+                            >
+                                <div class="text-headline-large font-weight-bold focus-label">
+                                    Focusing
+                                </div>
+                                <div class="text-body-small text-medium-emphasis focus-label">
+                                    {{ todayRound > 1 ? `${ todayRound } sessions today` : `${ todayRound } session today` }}
+                                </div>
+                            </div>
                             <TimerPanel
                                 :compact="mdAndUp && !isFocusMode"
                                 :is-break="timer.isBreak.value"
@@ -177,17 +205,24 @@ const showNotice = computed({
             v-if="mdAndUp"
             v-model="showSettings"
             location="right"
+            :order="-1"
             temporary
             width="360"
         >
-            <div class="d-flex justify-end pa-2">
+            <!-- order=-1 讓抽屜蓋住 app bar 的位置；用同樣的 compact toolbar，關閉鈕就落在原本設定鈕的位置。 -->
+            <v-toolbar
+                color="transparent"
+                density="compact"
+                flat
+            >
+                <v-spacer />
                 <v-btn
                     aria-label="Close settings"
                     icon="mdi-close"
                     variant="text"
                     @click="showSettings = false"
                 />
-            </div>
+            </v-toolbar>
             <div class="px-6 pb-6">
                 <SettingsPanel
                     :locked="timer.isSettingsLocked.value"
@@ -242,9 +277,47 @@ const showNotice = computed({
     transition: background-color 0.6s ease;
 }
 
+/* 專注狀態文字的字距；Vuetify 沒有 letter-spacing utility。尾端多出的字距以負 margin 抵銷，維持視覺置中。 */
+.focus-label {
+    letter-spacing: 0.2em;
+    margin-right: -0.2em;
+}
+
+/* 專注中的呼吸背景：吸氣 4 秒（A→B）、停 2 秒、吐氣 6 秒（B→A）、停 3 秒，一輪 15 秒。 */
+.app-breathing {
+    background-color: rgb(var(--v-theme-background));
+    animation: app-breathe 15s ease-in-out infinite;
+}
+
+@keyframes app-breathe {
+    0% {
+        background-color: rgb(var(--v-theme-background));
+    }
+
+    26.67% {
+        background-color: rgb(var(--v-theme-background-breath));
+    }
+
+    40% {
+        background-color: rgb(var(--v-theme-background-breath));
+    }
+
+    80% {
+        background-color: rgb(var(--v-theme-background));
+    }
+
+    100% {
+        background-color: rgb(var(--v-theme-background));
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .app-root {
         transition: none;
+    }
+
+    .app-breathing {
+        animation: none;
     }
 }
 </style>
