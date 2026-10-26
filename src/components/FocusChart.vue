@@ -70,7 +70,7 @@ const shiftWindow = (delta: number): void => {
                 variant="text"
                 @click="shiftWindow(VISIBLE_DAYS)"
             />
-            <div class="text-subtitle-2 text-medium-emphasis">
+            <div class="text-title-small text-medium-emphasis">
                 Focus cycles · {{ rangeText }}
             </div>
             <v-btn
@@ -98,7 +98,7 @@ const shiftWindow = (delta: number): void => {
                     <div
                         v-for="hour in HOURS.filter((value) => value % LABEL_EVERY_HOURS === 0)"
                         :key="hour"
-                        class="position-absolute text-caption text-medium-emphasis"
+                        class="position-absolute text-body-small text-medium-emphasis"
                         :style="{ top: `${(hour / 24) * 100}%` }"
                     >
                         {{ String(hour).padStart(2, '0') }}
@@ -142,10 +142,10 @@ const shiftWindow = (delta: number): void => {
                     class="d-flex flex-column align-center border-t"
                     :style="{ height: `${FOOTER_HEIGHT}px` }"
                 >
-                    <div class="text-caption text-medium-emphasis text-truncate w-100 text-center">
+                    <div class="text-body-small text-medium-emphasis text-truncate w-100 text-center">
                         {{ entry.label }}
                     </div>
-                    <div class="text-caption font-weight-bold text-truncate w-100 text-center">
+                    <div class="text-body-small font-weight-bold text-truncate w-100 text-center">
                         {{ entry.totalMs > 0 ? formatCompactDuration(entry.totalMs) : '' }}
                     </div>
                 </div>

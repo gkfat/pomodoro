@@ -41,10 +41,10 @@ const onBreakSeconds = (value: unknown): void => {
     <div class="d-flex flex-column ga-4 w-100">
         <div>
             <div class="d-flex justify-space-between align-baseline">
-                <div class="text-subtitle-2">
+                <div class="text-title-small">
                     Focus time
                 </div>
-                <div class="text-h5 font-weight-bold">
+                <div class="text-headline-small font-weight-bold">
                     {{ props.settings.workMinutes }} min
                 </div>
             </div>
@@ -62,10 +62,10 @@ const onBreakSeconds = (value: unknown): void => {
 
         <div>
             <div class="d-flex justify-space-between align-baseline">
-                <div class="text-subtitle-2">
+                <div class="text-title-small">
                     Break time
                 </div>
-                <div class="text-h5 font-weight-bold">
+                <div class="text-headline-small font-weight-bold">
                     {{ formatBreakDuration(props.settings.breakSeconds) }}
                 </div>
             </div>

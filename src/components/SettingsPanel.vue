@@ -32,7 +32,7 @@ const onAlertSound = (value: unknown): void => {
     <div class="d-flex flex-column ga-6">
         <div>
             <div class="d-flex justify-space-between align-center">
-                <div class="text-subtitle-2">
+                <div class="text-title-small">
                     Alert sound
                 </div>
                 <v-btn
@@ -56,7 +56,7 @@ const onAlertSound = (value: unknown): void => {
             />
             <div
                 v-if="props.previewError"
-                class="text-caption text-error mt-1"
+                class="text-body-small text-error mt-1"
             >
                 {{ props.previewError }}
             </div>
@@ -64,7 +64,7 @@ const onAlertSound = (value: unknown): void => {
 
         <div>
             <div class="d-flex justify-space-between align-center">
-                <div class="text-subtitle-2">
+                <div class="text-title-small">
                     System notifications
                 </div>
                 <v-switch
@@ -78,13 +78,13 @@ const onAlertSound = (value: unknown): void => {
             </div>
             <div
                 v-if="props.notificationSupport === 'unsupported'"
-                class="text-caption text-medium-emphasis"
+                class="text-body-small text-medium-emphasis"
             >
                 This browser does not support system notifications
             </div>
             <div
                 v-else-if="props.notificationSupport === 'denied'"
-                class="text-caption text-medium-emphasis"
+                class="text-body-small text-medium-emphasis"
             >
                 Notifications are blocked. Enable them in your browser settings.
             </div>

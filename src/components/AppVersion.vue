@@ -4,7 +4,7 @@ const buildDate = __APP_BUILD_DATE__;
 </script>
 
 <template>
-    <div class="text-caption text-medium-emphasis text-center">
+    <div class="text-body-small text-medium-emphasis text-center">
         {{ commit }} · {{ buildDate }}
     </div>
 </template>
